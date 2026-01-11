@@ -2,8 +2,8 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "fire
 import { auth } from "./config";
 
 // Admin credentials (Fixed - Owner only)
-export const ADMIN_EMAIL = "psrentals08@gmail.com";
-export const ADMIN_PASSWORD = "Psrentals@08";
+export const ADMIN_EMAIL = "psrental08@gmail.com";
+export const ADMIN_PASSWORD = "Psrental@08";
 
 // Create admin user if it doesn't exist
 export const ensureAdminUser = async (): Promise<void> => {

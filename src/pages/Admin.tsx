@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/integrations/firebase/config';
+import { ADMIN_EMAIL } from '@/integrations/firebase/auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -105,36 +106,24 @@ const Admin = () => {
     }
   }, [user]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
 
-    const USERNAME = 'psrental';
-    const PASSWORD = 'Psrental@08';
-    const ADMIN_EMAIL = 'admin@psrentals.com';
-
-    if (email === USERNAME && password === PASSWORD) {
-      try {
-        const cred = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, PASSWORD);
-        setUser(cred.user);
-        toast({
-          title: 'Login successful',
-          description: 'Welcome to the admin dashboard',
-        });
-      } catch (error: any) {
-        const errMsg = error?.message || 'Failed to login to Firebase with admin account.';
-        setLoginError(errMsg);
-        toast({
-          title: 'Login failed',
-          description: errMsg,
-          variant: 'destructive',
-        });
-      }
-    } else {
-      setLoginError('Invalid username or password.');
+    try {
+      // Ensure admin user exists can be handled elsewhere; here we sign in
+      const cred = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
+      setUser(cred.user);
+      toast({
+        title: 'Login successful',
+        description: 'Welcome to the admin dashboard',
+      });
+    } catch (error: any) {
+      const msg = error?.message || 'Failed to login';
+      setLoginError('Invalid credentials or Firebase error');
       toast({
         title: 'Login failed',
-        description: 'Invalid credentials. Owner access only.',
+        description: msg,
         variant: 'destructive',
       });
     }
@@ -498,19 +487,17 @@ const Admin = () => {
                 </Alert>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email">Username</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
-                  type="text"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="psrental"
-                  autoComplete="username"
+                  type="email"
+                  value={''}
+                  readOnly
+                  placeholder=""
+                  aria-hidden
                 />
-                <p className="text-xs text-muted-foreground">
-                  Owner access only (username: psrental)
-                </p>
+                <input type="hidden" value={ADMIN_EMAIL} />
+                <p className="text-xs text-muted-foreground">Owner access only (admin email is used)</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -525,7 +512,7 @@ const Admin = () => {
                 />
               </div>
               <Button type="submit" className="w-full">
-                Sign In
+                Login
               </Button>
               <Button
                 type="button"
