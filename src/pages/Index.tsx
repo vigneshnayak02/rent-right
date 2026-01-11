@@ -1,15 +1,28 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { ArrowRight, Shield, Clock, MapPin, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
 import HeroSearch from '@/components/HeroSearch';
 import BikeCard from '@/components/BikeCard';
 import Footer from '@/components/Footer';
-import { sampleBikes } from '@/data/sampleBikes';
+import { Bike } from '@/types/bike';
+import { subscribeToBikes } from '@/integrations/firebase/bikes';
 import heroBike from '@/assets/hero-bike.jpg';
 
 const Index = () => {
-  const featuredBikes = sampleBikes.slice(0, 3);
+  const [bikes, setBikes] = useState<Bike[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToBikes((bikesData) => {
+      setBikes(bikesData);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Get available bikes and limit to 3 for featured
+  const featuredBikes = bikes.filter(b => b.status === 'available').slice(0, 3);
 
   const features = [
     {
@@ -142,11 +155,17 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredBikes.map((bike, index) => (
-              <div key={bike.id} style={{ animationDelay: `${index * 0.1}s` }}>
-                <BikeCard bike={bike} />
+            {featuredBikes.length > 0 ? (
+              featuredBikes.map((bike, index) => (
+                <div key={bike.id} style={{ animationDelay: `${index * 0.1}s` }}>
+                  <BikeCard bike={bike} />
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-16">
+                <p className="text-muted-foreground">No bikes available yet. Check back soon!</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>

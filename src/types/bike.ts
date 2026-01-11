@@ -11,6 +11,7 @@ export interface Bike {
   fuel_type: string;
   mileage: string;
   seats: number;
+  bike_number?: string; // Internal bike number (not shown on product cards)
   description?: string;
   created_at?: string;
   updated_at?: string;

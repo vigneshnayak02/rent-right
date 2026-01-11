@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Fuel, Gauge, Users, Settings, Calendar, Clock, MapPin, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,15 +7,64 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { sampleBikes } from '@/data/sampleBikes';
-import { LOCATIONS } from '@/types/bike';
+import { LOCATIONS, Bike } from '@/types/bike';
+import { createBookingIntent } from '@/integrations/firebase/bookingIntents';
+import { getBikeById, subscribeToBikes } from '@/integrations/firebase/bikes';
 
 const BikeDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [bike, setBike] = useState<Bike | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const bike = sampleBikes.find(b => b.id === id);
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Try to get bike directly first
+    getBikeById(id)
+      .then((bikeData) => {
+        if (bikeData) {
+          setBike(bikeData);
+          setLoading(false);
+        } else {
+          // If not found, subscribe to all bikes and find it
+          const unsubscribe = subscribeToBikes((bikes) => {
+            const foundBike = bikes.find(b => b.id === id);
+            if (foundBike) {
+              setBike(foundBike);
+              setLoading(false);
+              unsubscribe();
+            } else if (bikes.length > 0) {
+              // Bike not found after bikes loaded
+              setLoading(false);
+              unsubscribe();
+            }
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching bike:', error);
+        setLoading(false);
+        // Try subscribing as fallback
+        const unsubscribe = subscribeToBikes((bikes) => {
+          const foundBike = bikes.find(b => b.id === id);
+          if (foundBike) {
+            setBike(foundBike);
+            setLoading(false);
+            unsubscribe();
+          } else if (bikes.length > 0) {
+            setLoading(false);
+            unsubscribe();
+          }
+        });
+      });
+  }, [id]);
 
   // Get booking params from URL
   const location = searchParams.get('location') || '';
@@ -43,9 +92,25 @@ const BikeDetails = () => {
 
   const locationName = LOCATIONS.find(l => l.id === location)?.name || 'Not selected';
 
-  // Generate WhatsApp message
-  const handleWhatsAppBooking = () => {
-    if (!bike) return;
+  // Generate WhatsApp message and log booking intent
+  const handleWhatsAppBooking = async () => {
+    if (!bike || !hours) return;
+
+    // Log booking intent to Firebase
+    try {
+      await createBookingIntent({
+        bike_id: bike.id,
+        bike_name: bike.name,
+        pickup_location: locationName,
+        pickup_date: pickupDate,
+        drop_date: dropDate,
+        total_hours: hours,
+        total_price: totalPrice,
+      });
+    } catch (error) {
+      console.error('Failed to log booking intent:', error);
+      // Continue anyway - don't block the user
+    }
 
     const message = `
 🏍️ *BIKE BOOKING REQUEST*
@@ -70,6 +135,18 @@ const BikeDetails = () => {
     window.open(whatsappUrl, '_blank');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 pt-32 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading bike details...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!bike) {
     return (
       <div className="min-h-screen bg-background">
@@ -80,6 +157,25 @@ const BikeDetails = () => {
             <Link to="/bikes">Back to Bikes</Link>
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  // If bike is not available, show unavailable message
+  if (bike.status !== 'available') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 pt-32 text-center">
+          <h1 className="font-display text-2xl font-bold text-foreground mb-4">{bike.name}</h1>
+          <p className="text-muted-foreground mb-6">
+            This bike is currently {bike.status === 'rented' ? 'rented' : 'under maintenance'} and not available for booking.
+          </p>
+          <Button asChild>
+            <Link to="/bikes">Browse Available Bikes</Link>
+          </Button>
+        </div>
+        <Footer />
       </div>
     );
   }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Filter, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,53 +8,96 @@ import Navbar from '@/components/Navbar';
 import HeroSearch from '@/components/HeroSearch';
 import BikeCard from '@/components/BikeCard';
 import Footer from '@/components/Footer';
-import { sampleBikes } from '@/data/sampleBikes';
+import { Bike } from '@/types/bike';
+import { subscribeToBikes } from '@/integrations/firebase/bikes';
 
 const Bikes = () => {
   const [searchParams] = useSearchParams();
   const [sortBy, setSortBy] = useState('price-low');
   const [filterCC, setFilterCC] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const [bikes, setBikes] = useState<Bike[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get unique CC ranges and engine types
+  // Subscribe to bikes from Firebase
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    let hasReceivedData = false;
+    
+    const unsubscribe = subscribeToBikes((bikesData) => {
+      setBikes(bikesData);
+      setLoading(false);
+      setError(null);
+      hasReceivedData = true;
+    });
+
+    // Fallback: try to fetch bikes once if subscription doesn't work
+    const timeout = setTimeout(() => {
+      if (!hasReceivedData) {
+        import('@/integrations/firebase/bikes').then(({ getBikes }) => {
+          getBikes()
+            .then((bikesData) => {
+              setBikes(bikesData);
+              setLoading(false);
+            })
+            .catch((err) => {
+              console.error('Error fetching bikes:', err);
+              setError('Failed to load bikes. Please check your Firebase connection.');
+              setLoading(false);
+            });
+        });
+      }
+    }, 2000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  // Get unique CC ranges and engine types (only from available bikes)
+  const availableBikes = bikes.filter(b => b.status === 'available');
   const ccRanges = ['all', '100-150', '150-250', '250-500', '500+'];
-  const engineTypes = ['all', ...new Set(sampleBikes.map(b => b.engine_type))];
+  const engineTypes = ['all', ...new Set(availableBikes.map(b => b.engine_type))];
 
   // Filter and sort bikes
   const filteredBikes = useMemo(() => {
-    let bikes = [...sampleBikes];
+    // Only show available bikes on the website
+    let filtered = bikes.filter(b => b.status === 'available');
 
     // Filter by CC range
     if (filterCC !== 'all') {
-      if (filterCC === '100-150') bikes = bikes.filter(b => b.cc >= 100 && b.cc < 150);
-      else if (filterCC === '150-250') bikes = bikes.filter(b => b.cc >= 150 && b.cc < 250);
-      else if (filterCC === '250-500') bikes = bikes.filter(b => b.cc >= 250 && b.cc < 500);
-      else if (filterCC === '500+') bikes = bikes.filter(b => b.cc >= 500);
+      if (filterCC === '100-150') filtered = filtered.filter(b => b.cc >= 100 && b.cc < 150);
+      else if (filterCC === '150-250') filtered = filtered.filter(b => b.cc >= 150 && b.cc < 250);
+      else if (filterCC === '250-500') filtered = filtered.filter(b => b.cc >= 250 && b.cc < 500);
+      else if (filterCC === '500+') filtered = filtered.filter(b => b.cc >= 500);
     }
 
     // Filter by engine type
     if (filterType !== 'all') {
-      bikes = bikes.filter(b => b.engine_type === filterType);
+      filtered = filtered.filter(b => b.engine_type === filterType);
     }
 
     // Sort
     switch (sortBy) {
       case 'price-low':
-        bikes.sort((a, b) => a.price_per_hour - b.price_per_hour);
+        filtered.sort((a, b) => a.price_per_hour - b.price_per_hour);
         break;
       case 'price-high':
-        bikes.sort((a, b) => b.price_per_hour - a.price_per_hour);
+        filtered.sort((a, b) => b.price_per_hour - a.price_per_hour);
         break;
       case 'cc-low':
-        bikes.sort((a, b) => a.cc - b.cc);
+        filtered.sort((a, b) => a.cc - b.cc);
         break;
       case 'cc-high':
-        bikes.sort((a, b) => b.cc - a.cc);
+        filtered.sort((a, b) => b.cc - a.cc);
         break;
     }
 
-    return bikes;
-  }, [sortBy, filterCC, filterType]);
+    return filtered;
+  }, [bikes, sortBy, filterCC, filterType]);
 
   const FilterContent = () => (
     <div className="space-y-6">
@@ -175,8 +218,29 @@ const Bikes = () => {
                 </Sheet>
               </div>
 
+              {/* Loading State */}
+              {loading && (
+                <div className="text-center py-16">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading bikes...</p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {error && !loading && (
+                <div className="text-center py-16">
+                  <p className="text-destructive text-lg mb-4">{error}</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.location.reload()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              )}
+
               {/* Bikes Grid */}
-              {filteredBikes.length > 0 ? (
+              {!loading && !error && filteredBikes.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredBikes.map((bike, index) => (
                     <div 
@@ -188,7 +252,18 @@ const Bikes = () => {
                     </div>
                   ))}
                 </div>
-              ) : (
+              )}
+
+              {/* No Bikes Found */}
+              {!loading && !error && filteredBikes.length === 0 && bikes.length === 0 && (
+                <div className="text-center py-16">
+                  <p className="text-muted-foreground text-lg mb-4">No bikes available yet.</p>
+                  <p className="text-sm text-muted-foreground">Add bikes from the admin panel to get started.</p>
+                </div>
+              )}
+
+              {/* No Bikes Match Filters */}
+              {!loading && !error && filteredBikes.length === 0 && bikes.length > 0 && (
                 <div className="text-center py-16">
                   <p className="text-muted-foreground text-lg">No bikes found matching your criteria.</p>
                   <Button 
