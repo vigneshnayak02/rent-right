@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '@/integrations/firebase/config';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,8 +78,12 @@ const Admin = () => {
   });
 
   useEffect(() => {
-    // No external auth provider for admin. Using local username/password.
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -105,13 +111,25 @@ const Admin = () => {
 
     const USERNAME = 'psrental';
     const PASSWORD = 'Psrental@08';
+    const ADMIN_EMAIL = 'admin@psrentals.com';
 
     if (email === USERNAME && password === PASSWORD) {
-      setUser({ email: USERNAME });
-      toast({
-        title: 'Login successful',
-        description: 'Welcome to the admin dashboard',
-      });
+      try {
+        const cred = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, PASSWORD);
+        setUser(cred.user);
+        toast({
+          title: 'Login successful',
+          description: 'Welcome to the admin dashboard',
+        });
+      } catch (error: any) {
+        const errMsg = error?.message || 'Failed to login to Firebase with admin account.';
+        setLoginError(errMsg);
+        toast({
+          title: 'Login failed',
+          description: errMsg,
+          variant: 'destructive',
+        });
+      }
     } else {
       setLoginError('Invalid username or password.');
       toast({
