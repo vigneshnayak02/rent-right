@@ -491,12 +491,12 @@ const Admin = () => {
                 <Input
                   id="email"
                   type="email"
-                  value={''}
+                  value={ADMIN_EMAIL}
                   readOnly
-                  placeholder=""
-                  aria-hidden
+                  placeholder={ADMIN_EMAIL}
+                  title={ADMIN_EMAIL}
                 />
-                <input type="hidden" value={ADMIN_EMAIL} />
+                <input type="hidden" name="email" value={ADMIN_EMAIL} />
                 <p className="text-xs text-muted-foreground">Owner access only (admin email is used)</p>
               </div>
               <div className="space-y-2">
