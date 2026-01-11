@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/integrations/firebase/config';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,18 +42,10 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
-// Admin email - only this email can access the dashboard
-const ADMIN_EMAIL = 'admin@psrentals.com';
-
-// Placeholder for admin user setup (handled through Firebase console)
-const ensureAdminUser = async () => {
-  // Admin user should be created through Firebase Console
-  // This is just a placeholder to prevent errors
-  console.log('Admin user should be created through Firebase Console');
-};
+// Admin uses local username/password authentication
 
 const Admin = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -86,17 +76,8 @@ const Admin = () => {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-      
-      // Create admin user if it doesn't exist (first time setup)
-      if (!currentUser) {
-        await ensureAdminUser();
-      }
-    });
-
-    return () => unsubscribe();
+    // No external auth provider for admin. Using local username/password.
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -118,56 +99,35 @@ const Admin = () => {
     }
   }, [user]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
 
-    try {
-      // Only allow the fixed owner email
-      if (email !== ADMIN_EMAIL) {
-        setLoginError('Invalid credentials. Owner access only.');
-        toast({
-          title: "Access Denied",
-          description: "Only the owner can access this dashboard",
-          variant: "destructive",
-        });
-        return;
-      }
+    const USERNAME = 'psrental';
+    const PASSWORD = 'Psrental@08';
 
-      await signInWithEmailAndPassword(auth, email, password);
+    if (email === USERNAME && password === PASSWORD) {
+      setUser({ email: USERNAME });
       toast({
-        title: "Login successful",
-        description: "Welcome to the admin dashboard",
+        title: 'Login successful',
+        description: 'Welcome to the admin dashboard',
       });
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to login';
-      setLoginError(errorMessage.includes('user-not-found') || errorMessage.includes('wrong-password') 
-        ? 'Invalid email or password. Owner access only.' 
-        : errorMessage);
+    } else {
+      setLoginError('Invalid username or password.');
       toast({
-        title: "Login failed",
-        description: errorMessage.includes('user-not-found') || errorMessage.includes('wrong-password')
-          ? 'Invalid credentials. Owner access only.'
-          : errorMessage,
-        variant: "destructive",
+        title: 'Login failed',
+        description: 'Invalid credentials. Owner access only.',
+        variant: 'destructive',
       });
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+  const handleLogout = () => {
+    setUser(null);
+    toast({
+      title: 'Logged out',
+      description: 'You have been logged out successfully',
+    });
   };
 
   const resetBikeForm = () => {
@@ -520,18 +480,18 @@ const Admin = () => {
                 </Alert>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Username</Label>
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="psrentals08@gmail.com"
+                  placeholder="psrental"
                   autoComplete="username"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Owner access only
+                  Owner access only (username: psrental)
                 </p>
               </div>
               <div className="space-y-2">
