@@ -84,7 +84,7 @@ const Index = () => {
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="font-display font-semibold border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-                  <a href="tel:+919876543210">
+                  <a href="tel:+919951806045">
                     Call Now
                   </a>
                 </Button>
@@ -188,7 +188,7 @@ const Index = () => {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground font-display font-semibold">
-                <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer">
+                <a href="https://wa.me/919951806045" target="_blank" rel="noopener noreferrer">
                   WhatsApp Us
                 </a>
               </Button>
