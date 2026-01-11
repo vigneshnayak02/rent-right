@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { auth } from '@/integrations/firebase/config';
 import { ADMIN_EMAIL } from '@/integrations/firebase/auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,6 +52,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayEmail, setDisplayEmail] = useState('');
   const [loginError, setLoginError] = useState('');
   const [bikes, setBikes] = useState<Bike[]>([]);
   const [bookingIntents, setBookingIntents] = useState<BookingIntent[]>([]);
@@ -87,6 +88,11 @@ const Admin = () => {
     return () => unsubscribe();
   }, []);
 
+  // Display email in the visible input (not the real admin email)
+  const DISPLAY_EMAIL = 'contact@psrentals.com';
+  // initialize visible display email
+  useEffect(() => setDisplayEmail(DISPLAY_EMAIL), []);
+
   useEffect(() => {
     if (user) {
       // Subscribe to bikes
@@ -112,6 +118,7 @@ const Admin = () => {
 
     try {
       // Ensure admin user exists can be handled elsewhere; here we sign in
+      await setPersistence(auth, browserLocalPersistence);
       const cred = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
       setUser(cred.user);
       toast({
@@ -491,10 +498,10 @@ const Admin = () => {
                 <Input
                   id="email"
                   type="email"
-                  value={ADMIN_EMAIL}
-                  readOnly
-                  placeholder={ADMIN_EMAIL}
-                  title={ADMIN_EMAIL}
+                  value={displayEmail}
+                  onChange={(e) => setDisplayEmail(e.target.value)}
+                  placeholder={DISPLAY_EMAIL}
+                  title={DISPLAY_EMAIL}
                 />
                 <input type="hidden" name="email" value={ADMIN_EMAIL} />
                 <p className="text-xs text-muted-foreground">Owner access only (admin email is used)</p>
