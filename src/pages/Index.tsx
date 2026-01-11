@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Shield, Clock, MapPin, Star } from 'lucide-react';
+import { ArrowRight, Clock, MapPin, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
 import HeroSearch from '@/components/HeroSearch';
@@ -25,11 +25,6 @@ const Index = () => {
   const featuredBikes = bikes.filter(b => b.status === 'available').slice(0, 3);
 
   const features = [
-    {
-      icon: Shield,
-      title: 'Fully Insured',
-      description: 'All our bikes come with comprehensive insurance for your peace of mind.'
-    },
     {
       icon: Clock,
       title: '24/7 Support',
@@ -104,35 +99,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 md:py-24 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Why Choose <span className="text-primary">PS Rentals</span>?
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              We provide the best bike rental experience in Hyderabad with top-quality vehicles and exceptional service.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <div 
-                key={feature.title}
-                className="p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-card group animate-fade-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary transition-colors">
-                  <feature.icon className="h-6 w-6 text-primary group-hover:text-primary-foreground transition-colors" />
-                </div>
-                <h3 className="font-display text-xl font-bold text-foreground mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      
 
       {/* Featured Bikes Section */}
       <section className="py-16 md:py-24">
@@ -166,6 +133,36 @@ const Index = () => {
                 <p className="text-muted-foreground">No bikes available yet. Check back soon!</p>
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16 md:py-24 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Why Choose <span className="text-primary">PS Rentals</span>?
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              We provide the best bike rental experience in Hyderabad with top-quality vehicles and exceptional service.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <div 
+                key={feature.title}
+                className="p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-card group animate-fade-in"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary transition-colors">
+                  <feature.icon className="h-6 w-6 text-primary group-hover:text-primary-foreground transition-colors" />
+                </div>
+                <h3 className="font-display text-xl font-bold text-foreground mb-2">{feature.title}</h3>
+                <p className="text-muted-foreground text-sm">{feature.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
