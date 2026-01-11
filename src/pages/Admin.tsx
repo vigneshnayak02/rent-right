@@ -44,6 +44,16 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
+// Admin email - only this email can access the dashboard
+const ADMIN_EMAIL = 'admin@psrentals.com';
+
+// Placeholder for admin user setup (handled through Firebase console)
+const ensureAdminUser = async () => {
+  // Admin user should be created through Firebase Console
+  // This is just a placeholder to prevent errors
+  console.log('Admin user should be created through Firebase Console');
+};
+
 const Admin = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -170,6 +180,7 @@ const Admin = () => {
       fuel_type: '',
       mileage: '',
       seats: '',
+      bike_number: '',
       description: '',
       image_url: ''
     });

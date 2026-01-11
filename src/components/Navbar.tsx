@@ -46,11 +46,11 @@ const Navbar = () => {
           {/* Contact Info & CTA */}
           <div className="hidden md:flex items-center gap-4">
             <a 
-              href="tel:+919876543210" 
+              href="tel:+919985819038" 
               className="flex items-center gap-2 text-secondary-foreground hover:text-primary transition-colors"
             >
               <Phone className="h-4 w-4" />
-              <span className="font-medium">+91 98765 43210</span>
+              <span className="font-medium">+91 99858 19038</span>
             </a>
             <Button asChild variant="default" className="font-display font-bold">
               <Link to="/bikes">Rent Now</Link>
@@ -85,11 +85,11 @@ const Navbar = () => {
             ))}
             <div className="pt-4 border-t border-primary/20 space-y-3">
               <a 
-                href="tel:+919876543210" 
+                href="tel:+919985819038" 
                 className="flex items-center gap-2 text-secondary-foreground"
               >
                 <Phone className="h-4 w-4 text-primary" />
-                <span>+91 98765 43210</span>
+                <span>+91 99858 19038</span>
               </a>
               <a 
                 href="#locations" 
