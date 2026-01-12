@@ -130,8 +130,8 @@ const BikeDetails = () => {
 `.trim();
 
     const encodedMessage = encodeURIComponent(message);
-    // Target WhatsApp number (India country code +91): 9951806045 -> 919951806045
-    const whatsappUrl = `https://wa.me/919951806045?text=${encodedMessage}`;
+    // Target WhatsApp number (India country code +91): 9985819038 -> 919985819038
+    const whatsappUrl = `https://wa.me/919985819038?text=${encodedMessage}`;
     
     window.open(whatsappUrl, '_blank');
   };
