@@ -83,10 +83,18 @@ const Bikes = () => {
     // Sort
     switch (sortBy) {
       case 'price-low':
-        filtered.sort((a, b) => a.price_per_hour - b.price_per_hour);
+        filtered.sort((a, b) => {
+          const aPrice = a.price_per_hour || a.price_per_day || a.price_per_week || a.price_per_month || 0;
+          const bPrice = b.price_per_hour || b.price_per_day || b.price_per_week || b.price_per_month || 0;
+          return aPrice - bPrice;
+        });
         break;
       case 'price-high':
-        filtered.sort((a, b) => b.price_per_hour - a.price_per_hour);
+        filtered.sort((a, b) => {
+          const aPrice = a.price_per_hour || a.price_per_day || a.price_per_week || a.price_per_month || 0;
+          const bPrice = b.price_per_hour || b.price_per_day || b.price_per_week || b.price_per_month || 0;
+          return bPrice - aPrice;
+        });
         break;
       case 'cc-low':
         filtered.sort((a, b) => a.cc - b.cc);

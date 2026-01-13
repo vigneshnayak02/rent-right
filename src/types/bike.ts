@@ -6,7 +6,10 @@ export interface Bike {
   image_url: string;
   cc: number;
   engine_type: string;
-  price_per_hour: number;
+  price_per_hour?: number;
+  price_per_day?: number;
+  price_per_week?: number;
+  price_per_month?: number;
   status: BikeStatus;
   fuel_type: string;
   mileage: string;
@@ -37,8 +40,5 @@ export interface Location {
 }
 
 export const LOCATIONS: Location[] = [
-  { id: 'madhapur', name: 'Madhapur', address: 'Hitech City Main Road, Madhapur' },
-  { id: 'kphb', name: 'KPHB', address: 'KPHB Colony Phase 6, Kukatpally' },
-  { id: 'secunderabad', name: 'Secunderabad', address: 'Paradise Circle, Secunderabad' },
-  { id: 'banjara-hills', name: 'Banjara Hills', address: 'Road No. 12, Banjara Hills' },
+  { id: 'yousufguda', name: 'Near Yousufguda Checkpost Metro Station', address: 'Yadagiri Nagar, Hyderabad - 500045' },
 ];

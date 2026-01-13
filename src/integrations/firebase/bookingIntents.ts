@@ -1,4 +1,4 @@
-import { ref, push, set, get, query, orderByChild, limitToLast, onValue, off } from "firebase/database";
+import { ref, push, set, get, query, orderByChild, limitToLast, onValue, off, remove } from "firebase/database";
 import { database } from "./config";
 import { BookingIntent } from "@/types/bike";
 
@@ -72,4 +72,16 @@ export const subscribeToBookingIntents = (
   });
   
   return () => off(intentsRef, 'value', unsubscribe);
+};
+
+// Delete a single booking intent
+export const deleteBookingIntent = async (intentId: string): Promise<void> => {
+  const intentRef = ref(database, `${BOOKING_INTENTS_PATH}/${intentId}`);
+  await remove(intentRef);
+};
+
+// Delete all booking intents
+export const deleteAllBookingIntents = async (): Promise<void> => {
+  const intentsRef = ref(database, BOOKING_INTENTS_PATH);
+  await remove(intentsRef);
 };

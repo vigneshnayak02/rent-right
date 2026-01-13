@@ -72,23 +72,98 @@ const BikeDetails = () => {
   const pickupTime = searchParams.get('pickupTime') || '';
   const dropDate = searchParams.get('dropDate') || '';
   const dropTime = searchParams.get('dropTime') || '';
+  
+  // User's selected rate preference
+  const [selectedRate, setSelectedRate] = useState<'auto' | 'hourly' | 'daily' | 'weekly' | 'monthly'>('auto');
 
   // Calculate rental duration and price
-  const { hours, totalPrice } = useMemo(() => {
+  const { hours, totalPrice, rateType, rateAmount, durationType } = useMemo(() => {
     if (!pickupDate || !pickupTime || !dropDate || !dropTime || !bike) {
-      return { hours: 0, totalPrice: 0 };
+      return { hours: 0, totalPrice: 0, rateType: 'hourly', rateAmount: 0, durationType: 'hours' };
     }
 
     const pickup = new Date(`${pickupDate}T${pickupTime}`);
     const drop = new Date(`${dropDate}T${dropTime}`);
     const diffMs = drop.getTime() - pickup.getTime();
     const diffHours = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)));
+    const diffDays = Math.max(1, Math.ceil(diffHours / 24));
+    const diffWeeks = Math.max(1, Math.ceil(diffDays / 7));
+    const diffMonths = Math.max(1, Math.ceil(diffWeeks / 4)); // Approximate month as 4 weeks
+
+    // Calculate total price for each rate option
+    const hourlyTotal = diffHours * (bike.price_per_hour || 0);
+    const dailyTotal = diffDays * (bike.price_per_day || 0);
+    const weeklyTotal = diffWeeks * (bike.price_per_week || 0);
+    const monthlyTotal = diffMonths * (bike.price_per_month || 0);
+
+    // Determine rate based on user selection or auto mode
+    let finalRateType = 'hourly';
+    let finalPrice = hourlyTotal;
+    let finalAmount = bike.price_per_hour || 0;
+    let duration = `${diffHours} hours`;
+
+    if (selectedRate === 'hourly' && bike.price_per_hour) {
+      finalRateType = 'hourly';
+      finalPrice = hourlyTotal;
+      finalAmount = bike.price_per_hour;
+      duration = `${diffHours} hours`;
+    } else if (selectedRate === 'daily' && bike.price_per_day) {
+      finalRateType = 'daily';
+      finalPrice = dailyTotal;
+      finalAmount = bike.price_per_day;
+      duration = `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+    } else if (selectedRate === 'weekly' && bike.price_per_week) {
+      finalRateType = 'weekly';
+      finalPrice = weeklyTotal;
+      finalAmount = bike.price_per_week;
+      duration = `${diffWeeks} week${diffWeeks > 1 ? 's' : ''}`;
+    } else if (selectedRate === 'monthly' && bike.price_per_month) {
+      finalRateType = 'monthly';
+      finalPrice = monthlyTotal;
+      finalAmount = bike.price_per_month;
+      duration = `${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+    } else if (selectedRate === 'auto') {
+      // Auto mode: find cheapest option
+      let bestRate = 'hourly';
+      let bestPrice = hourlyTotal;
+      let bestAmount = bike.price_per_hour || 0;
+      let bestDuration = `${diffHours} hours`;
+
+      if (bike.price_per_day && dailyTotal < bestPrice) {
+        bestRate = 'daily';
+        bestPrice = dailyTotal;
+        bestAmount = bike.price_per_day;
+        bestDuration = `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+      }
+      
+      if (bike.price_per_week && weeklyTotal < bestPrice) {
+        bestRate = 'weekly';
+        bestPrice = weeklyTotal;
+        bestAmount = bike.price_per_week;
+        bestDuration = `${diffWeeks} week${diffWeeks > 1 ? 's' : ''}`;
+      }
+      
+      if (bike.price_per_month && monthlyTotal < bestPrice) {
+        bestRate = 'monthly';
+        bestPrice = monthlyTotal;
+        bestAmount = bike.price_per_month;
+        bestDuration = `${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+      }
+
+      finalRateType = bestRate;
+      finalPrice = bestPrice;
+      finalAmount = bestAmount;
+      duration = bestDuration;
+    }
 
     return {
       hours: diffHours,
-      totalPrice: diffHours * bike.price_per_hour
+      totalPrice: finalPrice,
+      rateType: finalRateType,
+      rateAmount: finalAmount,
+      durationType: duration
     };
-  }, [pickupDate, pickupTime, dropDate, dropTime, bike]);
+  }, [pickupDate, pickupTime, dropDate, dropTime, bike, selectedRate]);
 
   const locationName = LOCATIONS.find(l => l.id === location)?.name || 'Not selected';
 
@@ -123,7 +198,11 @@ const BikeDetails = () => {
 📅 *Pickup:* ${pickupDate} at ${pickupTime}
 📅 *Drop:* ${dropDate} at ${dropTime}
 
-⏱️ *Duration:* ${hours} hours
+⏱️ *Duration:* ${durationType}
+💰 *Applied Rate:* ${rateType === 'monthly' ? `₹${rateAmount}/month` :
+                   rateType === 'weekly' ? `₹${rateAmount}/week` :
+                   rateType === 'daily' ? `₹${rateAmount}/day` :
+                   `₹${rateAmount}/hr`}
 💰 *Total Price:* ₹${totalPrice}
 
 ━━━━━━━━━━━━━━━━
@@ -229,9 +308,39 @@ const BikeDetails = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-3xl font-display font-bold text-primary">
-                    ₹{bike.price_per_hour}
+                    {bike.price_per_hour ? (
+                      <>
+                        ₹{bike.price_per_hour}
+                        <span className="text-muted-foreground text-sm">/hr</span>
+                      </>
+                    ) : bike.price_per_day ? (
+                      <>
+                        ₹{bike.price_per_day}
+                        <span className="text-muted-foreground text-sm">/day</span>
+                      </>
+                    ) : bike.price_per_week ? (
+                      <>
+                        ₹{bike.price_per_week}
+                        <span className="text-muted-foreground text-sm">/week</span>
+                      </>
+                    ) : bike.price_per_month ? (
+                      <>
+                        ₹{bike.price_per_month}
+                        <span className="text-muted-foreground text-sm">/month</span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">Price not set</span>
+                    )}
                   </div>
-                  <span className="text-muted-foreground">per hour</span>
+                  
+                  {/* Additional Prices */}
+                  {(bike.price_per_day || bike.price_per_week || bike.price_per_month) && (
+                    <div className="flex flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
+                      {bike.price_per_day && <span>Day: ₹{bike.price_per_day}</span>}
+                      {bike.price_per_week && <span>Week: ₹{bike.price_per_week}</span>}
+                      {bike.price_per_month && <span>Month: ₹{bike.price_per_month}</span>}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -310,17 +419,138 @@ const BikeDetails = () => {
 
                   <Separator />
 
+                  {/* Rate Selection */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Select Your Preferred Rate
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(bike.price_per_hour || bike.price_per_day || bike.price_per_week || bike.price_per_month) && (
+                        <button
+                          onClick={() => setSelectedRate('auto')}
+                          className={`p-2 rounded-lg border text-sm transition-colors ${
+                            selectedRate === 'auto'
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="font-medium">Best Rate</div>
+                          <div className="text-xs opacity-75">Auto-select cheapest</div>
+                        </button>
+                      )}
+                      
+                      {bike.price_per_hour && (
+                        <button
+                          onClick={() => setSelectedRate('hourly')}
+                          className={`p-2 rounded-lg border text-sm transition-colors ${
+                            selectedRate === 'hourly'
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="font-medium">Hourly</div>
+                          <div className="text-xs opacity-75">₹{bike.price_per_hour}/hr</div>
+                        </button>
+                      )}
+                      
+                      {bike.price_per_day && (
+                        <button
+                          onClick={() => setSelectedRate('daily')}
+                          className={`p-2 rounded-lg border text-sm transition-colors ${
+                            selectedRate === 'daily'
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="font-medium">Daily</div>
+                          <div className="text-xs opacity-75">₹{bike.price_per_day}/day</div>
+                        </button>
+                      )}
+                      
+                      {bike.price_per_week && (
+                        <button
+                          onClick={() => setSelectedRate('weekly')}
+                          className={`p-2 rounded-lg border text-sm transition-colors ${
+                            selectedRate === 'weekly'
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="font-medium">Weekly</div>
+                          <div className="text-xs opacity-75">₹{bike.price_per_week}/week</div>
+                        </button>
+                      )}
+                      
+                      {bike.price_per_month && (
+                        <button
+                          onClick={() => setSelectedRate('monthly')}
+                          className={`p-2 rounded-lg border text-sm transition-colors ${
+                            selectedRate === 'monthly'
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="font-medium">Monthly</div>
+                          <div className="text-xs opacity-75">₹{bike.price_per_month}/month</div>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <Separator />
+
                   {/* Price Breakdown */}
                   <div className="space-y-2">
+                    {/* Applied Rate */}
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Rate per hour</span>
-                      <span className="text-foreground">₹{bike.price_per_hour}</span>
+                      <span className="text-muted-foreground">Applied Rate</span>
+                      <span className="text-foreground capitalize">
+                        {rateType === 'monthly' ? `Monthly (₹${rateAmount}/month)` :
+                         rateType === 'weekly' ? `Weekly (₹${rateAmount}/week)` :
+                         rateType === 'daily' ? `Daily (₹${rateAmount}/day)` :
+                         `Hourly (₹${rateAmount}/hr)`}
+                      </span>
                     </div>
+                    
+                    {/* Available Rates Comparison */}
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div className="font-medium">Available Rates:</div>
+                      {bike.price_per_hour && (
+                        <div className="flex justify-between">
+                          <span>Hourly:</span>
+                          <span>₹{bike.price_per_hour}/hr × {hours}hrs = ₹{hours * bike.price_per_hour}</span>
+                        </div>
+                      )}
+                      {bike.price_per_day && (
+                        <div className="flex justify-between">
+                          <span>Daily:</span>
+                          <span>₹{bike.price_per_day}/day × {Math.ceil(hours/24)}days = ₹{Math.ceil(hours/24) * bike.price_per_day}</span>
+                        </div>
+                      )}
+                      {bike.price_per_week && (
+                        <div className="flex justify-between">
+                          <span>Weekly:</span>
+                          <span>₹{bike.price_per_week}/week × {Math.ceil(hours/(24*7))}weeks = ₹{Math.ceil(hours/(24*7)) * bike.price_per_week}</span>
+                        </div>
+                      )}
+                      {bike.price_per_month && (
+                        <div className="flex justify-between">
+                          <span>Monthly:</span>
+                          <span>₹{bike.price_per_month}/month × {Math.ceil(hours/(24*7*4))}months = ₹{Math.ceil(hours/(24*7*4)) * bike.price_per_month}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <Separator />
+                    
+                    {/* Duration */}
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Duration</span>
-                      <span className="text-foreground">{hours > 0 ? `${hours} hours` : '--'}</span>
+                      <span className="text-foreground">{durationType}</span>
                     </div>
                     <Separator />
+                    
+                    {/* Total */}
                     <div className="flex justify-between">
                       <span className="font-semibold text-foreground">Total</span>
                       <span className="font-display text-2xl font-bold text-primary">

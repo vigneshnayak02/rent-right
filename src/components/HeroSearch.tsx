@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Clock, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,13 +15,25 @@ interface SearchParams {
 
 const HeroSearch = () => {
   const navigate = useNavigate();
+  const [urlSearchParams] = useSearchParams();
   const [searchParams, setSearchParams] = useState<SearchParams>({
-    location: '',
-    pickupDate: '',
-    pickupTime: '',
-    dropDate: '',
-    dropTime: '',
+    location: urlSearchParams.get('location') || '',
+    pickupDate: urlSearchParams.get('pickupDate') || '',
+    pickupTime: urlSearchParams.get('pickupTime') || '',
+    dropDate: urlSearchParams.get('dropDate') || '',
+    dropTime: urlSearchParams.get('dropTime') || '',
   });
+
+  // Update form when URL params change
+  useEffect(() => {
+    setSearchParams({
+      location: urlSearchParams.get('location') || '',
+      pickupDate: urlSearchParams.get('pickupDate') || '',
+      pickupTime: urlSearchParams.get('pickupTime') || '',
+      dropDate: urlSearchParams.get('dropDate') || '',
+      dropTime: urlSearchParams.get('dropTime') || '',
+    });
+  }, [urlSearchParams]);
 
   // Get today's date formatted for input
   const today = new Date().toISOString().split('T')[0];

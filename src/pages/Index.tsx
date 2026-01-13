@@ -32,8 +32,8 @@ const Index = () => {
     },
     {
       icon: MapPin,
-      title: '4 Locations',
-      description: 'Convenient pickup points across Hyderabad for easy access.'
+      title: '1 Location',
+      description: 'Convenient pickup point at Yousufguda Checkpost Metro Station for easy access.'
     },
     {
       icon: Star,

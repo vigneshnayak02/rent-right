@@ -37,16 +37,30 @@ export const getBikeById = async (id: string): Promise<Bike | null> => {
 
 // Create a new bike
 export const createBike = async (bike: Omit<Bike, 'id'>): Promise<string> => {
+  console.log("Creating bike with data:", bike);
   const bikesRef = ref(database, BIKES_PATH);
   const newBikeRef = push(bikesRef);
   
+  // Filter out undefined values to prevent Firebase errors
+  const filteredBikeData = Object.keys(bike).reduce((acc, key) => {
+    const value = bike[key as keyof typeof bike];
+    if (value !== undefined) {
+      acc[key as keyof typeof acc] = value;
+    }
+    return acc;
+  }, {} as any);
+  
   const bikeData = {
-    ...bike,
+    ...filteredBikeData,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
   
+  console.log("Final bike data to save:", bikeData);
+  console.log("New bike ref key:", newBikeRef.key);
+  
   await set(newBikeRef, bikeData);
+  console.log("Bike created successfully with ID:", newBikeRef.key);
   return newBikeRef.key!;
 };
 
@@ -55,8 +69,17 @@ export const updateBike = async (id: string, updates: Partial<Bike>): Promise<vo
   try {
     const bikeRef = ref(database, `${BIKES_PATH}/${id}`);
     
+    // Filter out undefined values to prevent Firebase errors
+    const filteredUpdates = Object.keys(updates).reduce((acc, key) => {
+      const value = updates[key as keyof typeof updates];
+      if (value !== undefined) {
+        acc[key as keyof typeof acc] = value;
+      }
+      return acc;
+    }, {} as any);
+    
     const updateData = {
-      ...updates,
+      ...filteredUpdates,
       updated_at: new Date().toISOString()
     };
     

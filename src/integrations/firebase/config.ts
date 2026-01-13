@@ -5,16 +5,16 @@ import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getStorage } from "firebase/storage";
 
-// Your web app's Firebase configuration
+// Your web app's Firebase configuration (use Vite env vars when available)
 const firebaseConfig = {
-  apiKey: "AIzaSyBIzNV7UYOV5Rsc4WkOvdz_xhJfY0IwNAc",
-  authDomain: "ps-rentals.firebaseapp.com",
-  databaseURL: "https://ps-rentals-default-rtdb.firebaseio.com",
-  projectId: "ps-rentals",
-  storageBucket: "ps-rentals.firebasestorage.app",
-  messagingSenderId: "963209301864",
-  appId: "1:963209301864:web:05c44bbd616b672c4450dd",
-  measurementId: "G-YW7PWKKCQE"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBIzNV7UYOV5Rsc4WkOvdz_xhJfY0IwNAc",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "ps-rentals.firebaseapp.com",
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://ps-rentals-default-rtdb.firebaseio.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "ps-rentals",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "ps-rentals.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "963209301864",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:963209301864:web:05c44bbd616b672c4450dd",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-YW7PWKKCQE"
 };
 
 // Initialize Firebase

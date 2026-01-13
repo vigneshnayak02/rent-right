@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Bike, 
@@ -29,7 +30,9 @@ import {
 } from '@/integrations/firebase/bikes';
 import { 
   getBookingIntents, 
-  subscribeToBookingIntents 
+  subscribeToBookingIntents,
+  deleteBookingIntent,
+  deleteAllBookingIntents
 } from '@/integrations/firebase/bookingIntents';
 import { uploadBikeImage, deleteBikeImage } from '@/integrations/firebase/storage';
 import { 
@@ -61,6 +64,12 @@ const Admin = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   
+  // Bulk selection states
+  const [selectedBikes, setSelectedBikes] = useState<string[]>([]);
+  const [selectedIntents, setSelectedIntents] = useState<string[]>([]);
+  const [selectAllBikes, setSelectAllBikes] = useState(false);
+  const [selectAllIntents, setSelectAllIntents] = useState(false);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -70,6 +79,9 @@ const Admin = () => {
     cc: '',
     engine_type: '',
     price_per_hour: '',
+    price_per_day: '',
+    price_per_week: '',
+    price_per_month: '',
     status: 'available' as BikeStatus,
     fuel_type: '',
     mileage: '',
@@ -150,6 +162,9 @@ const Admin = () => {
       cc: '',
       engine_type: '',
       price_per_hour: '',
+      price_per_day: '',
+      price_per_week: '',
+      price_per_month: '',
       status: 'available',
       fuel_type: '',
       mileage: '',
@@ -178,6 +193,10 @@ const Admin = () => {
   const handleBikeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("Submitting bike form:", bikeForm);
+    console.log("Image file:", imageFile);
+    console.log("Image preview:", imagePreview);
+    
     // Check if user is authenticated
     if (!user) {
       toast({
@@ -188,7 +207,7 @@ const Admin = () => {
       return;
     }
     
-    // Validate required fields
+    // Validate only essential required fields (make pricing optional)
     if (!bikeForm.name.trim()) {
       toast({
         title: "Validation Error",
@@ -202,15 +221,6 @@ const Admin = () => {
       toast({
         title: "Validation Error",
         description: "Valid CC is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!bikeForm.price_per_hour || isNaN(parseInt(bikeForm.price_per_hour))) {
-      toast({
-        title: "Validation Error",
-        description: "Valid price per hour is required",
         variant: "destructive",
       });
       return;
@@ -252,14 +262,56 @@ const Admin = () => {
       return;
     }
 
-    // Validate image
-    if (!imageFile && !bikeForm.image_url.trim()) {
+    // Validate all price fields only if provided (all optional now)
+    if (bikeForm.price_per_hour && isNaN(parseInt(bikeForm.price_per_hour))) {
       toast({
         title: "Validation Error",
-        description: "Please provide either an image file or image URL",
+        description: "Price per hour must be a valid number",
         variant: "destructive",
       });
       return;
+    }
+
+    if (bikeForm.price_per_day && isNaN(parseInt(bikeForm.price_per_day))) {
+      toast({
+        title: "Validation Error",
+        description: "Price per day must be a valid number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (bikeForm.price_per_week && isNaN(parseInt(bikeForm.price_per_week))) {
+      toast({
+        title: "Validation Error",
+        description: "Price per week must be a valid number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (bikeForm.price_per_month && isNaN(parseInt(bikeForm.price_per_month))) {
+      toast({
+        title: "Validation Error",
+        description: "Price per month must be a valid number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // At least one price field should be provided
+    if (!bikeForm.price_per_hour && !bikeForm.price_per_day && !bikeForm.price_per_week && !bikeForm.price_per_month) {
+      toast({
+        title: "Validation Error", 
+        description: "Please provide at least one price option (hourly, daily, weekly, or monthly)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Image is optional - if no image provided, use placeholder
+    if (!imageFile && !bikeForm.image_url.trim()) {
+      console.log("No image provided, will use placeholder");
     }
     
     try {
@@ -284,7 +336,10 @@ const Admin = () => {
           name: bikeForm.name.trim(),
           cc: parseInt(bikeForm.cc),
           engine_type: bikeForm.engine_type.trim(),
-          price_per_hour: parseInt(bikeForm.price_per_hour),
+          price_per_hour: bikeForm.price_per_hour ? parseInt(bikeForm.price_per_hour) : undefined,
+          price_per_day: bikeForm.price_per_day ? parseInt(bikeForm.price_per_day) : undefined,
+          price_per_week: bikeForm.price_per_week ? parseInt(bikeForm.price_per_week) : undefined,
+          price_per_month: bikeForm.price_per_month ? parseInt(bikeForm.price_per_month) : undefined,
           status: bikeForm.status,
           fuel_type: bikeForm.fuel_type.trim(),
           mileage: bikeForm.mileage.trim(),
@@ -313,7 +368,10 @@ const Admin = () => {
           name: bikeForm.name.trim(),
           cc: parseInt(bikeForm.cc),
           engine_type: bikeForm.engine_type.trim(),
-          price_per_hour: parseInt(bikeForm.price_per_hour),
+          price_per_hour: bikeForm.price_per_hour ? parseInt(bikeForm.price_per_hour) : undefined,
+          price_per_day: bikeForm.price_per_day ? parseInt(bikeForm.price_per_day) : undefined,
+          price_per_week: bikeForm.price_per_week ? parseInt(bikeForm.price_per_week) : undefined,
+          price_per_month: bikeForm.price_per_month ? parseInt(bikeForm.price_per_month) : undefined,
           status: bikeForm.status,
           fuel_type: bikeForm.fuel_type.trim(),
           mileage: bikeForm.mileage.trim(),
@@ -383,6 +441,9 @@ const Admin = () => {
       cc: bike.cc.toString(),
       engine_type: bike.engine_type,
       price_per_hour: bike.price_per_hour.toString(),
+      price_per_day: bike.price_per_day?.toString() || '',
+      price_per_week: bike.price_per_week?.toString() || '',
+      price_per_month: bike.price_per_month?.toString() || '',
       status: bike.status,
       fuel_type: bike.fuel_type,
       mileage: bike.mileage,
@@ -402,6 +463,9 @@ const Admin = () => {
       cc: bike.cc.toString(),
       engine_type: bike.engine_type,
       price_per_hour: bike.price_per_hour.toString(),
+      price_per_day: bike.price_per_day?.toString() || '',
+      price_per_week: bike.price_per_week?.toString() || '',
+      price_per_month: bike.price_per_month?.toString() || '',
       status: 'available' as BikeStatus,
       fuel_type: bike.fuel_type,
       mileage: bike.mileage,
@@ -433,6 +497,155 @@ const Admin = () => {
       toast({
         title: "Error",
         description: error.message || 'Failed to delete bike',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteBookingIntent = async (intentId: string, bikeName: string) => {
+    if (!confirm(`Are you sure you want to delete the booking intent for ${bikeName}?`)) {
+      return;
+    }
+
+    try {
+      await deleteBookingIntent(intentId);
+      toast({
+        title: "Booking intent deleted",
+        description: `Booking intent for ${bikeName} has been deleted successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to delete booking intent',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteAllBookingIntents = async () => {
+    if (!confirm(`Are you sure you want to delete all ${bookingIntents.length} booking intents? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteAllBookingIntents();
+      toast({
+        title: "All booking intents deleted",
+        description: `${bookingIntents.length} booking intents have been deleted successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to delete booking intents',
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Bulk selection handlers
+  const handleBikeSelection = (bikeId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedBikes(prev => [...prev, bikeId]);
+    } else {
+      setSelectedBikes(prev => prev.filter(id => id !== bikeId));
+    }
+    // Reset select all state when individual selection changes
+    setSelectAllBikes(false);
+  };
+
+  const handleIntentSelection = (intentId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIntents(prev => [...prev, intentId]);
+    } else {
+      setSelectedIntents(prev => prev.filter(id => id !== intentId));
+    }
+    // Reset select all state when individual selection changes
+    setSelectAllIntents(false);
+  };
+
+  const handleSelectAllBikes = (checked: boolean, bikeList: Bike[]) => {
+    setSelectAllBikes(checked);
+    if (checked) {
+      setSelectedBikes(bikeList.map(bike => bike.id));
+    } else {
+      setSelectedBikes([]);
+    }
+  };
+
+  const handleSelectAllIntents = (checked: boolean) => {
+    setSelectAllIntents(checked);
+    if (checked) {
+      setSelectedIntents(bookingIntents.map(intent => intent.id));
+    } else {
+      setSelectedIntents([]);
+    }
+  };
+
+  const handleBulkDeleteBikes = async () => {
+    if (selectedBikes.length === 0) {
+      toast({
+        title: "No bikes selected",
+        description: "Please select at least one bike to delete",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedBikes.length} selected bikes? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      for (const bikeId of selectedBikes) {
+        const bike = bikes.find(b => b.id === bikeId);
+        if (bike && bike.image_url) {
+          await deleteBikeImage(bike.image_url);
+        }
+        await deleteBike(bikeId);
+      }
+      setSelectedBikes([]);
+      setSelectAllBikes(false);
+      toast({
+        title: "Bikes deleted",
+        description: `${selectedBikes.length} bikes have been deleted successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to delete bikes',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkDeleteIntents = async () => {
+    if (selectedIntents.length === 0) {
+      toast({
+        title: "No intents selected",
+        description: "Please select at least one booking intent to delete",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedIntents.length} selected booking intents? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      for (const intentId of selectedIntents) {
+        await deleteBookingIntent(intentId);
+      }
+      setSelectedIntents([]);
+      setSelectAllIntents(false);
+      toast({
+        title: "Booking intents deleted",
+        description: `${selectedIntents.length} booking intents have been deleted successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to delete booking intents',
         variant: "destructive",
       });
     }
@@ -604,6 +817,7 @@ const Admin = () => {
         <Tabs defaultValue="inventory" className="space-y-4">
           <TabsList>
             <TabsTrigger value="inventory">Inventory Manager</TabsTrigger>
+            <TabsTrigger value="live">Live Bikes</TabsTrigger>
             <TabsTrigger value="tracker">Live Tracker</TabsTrigger>
             <TabsTrigger value="status">Status Toggle</TabsTrigger>
           </TabsList>
@@ -617,13 +831,24 @@ const Admin = () => {
                     <CardTitle>Bike Inventory</CardTitle>
                     <CardDescription>Manage your bike collection</CardDescription>
                   </div>
-                  <Dialog open={isBikeDialogOpen} onOpenChange={setIsBikeDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button onClick={resetBikeForm}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Bike
+                  <div className="flex items-center gap-2">
+                    {selectedBikes.length > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDeleteBikes}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Selected ({selectedBikes.length})
                       </Button>
-                    </DialogTrigger>
+                    )}
+                    <Dialog open={isBikeDialogOpen} onOpenChange={setIsBikeDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button onClick={resetBikeForm}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Bike
+                        </Button>
+                      </DialogTrigger>
                     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>
@@ -664,13 +889,46 @@ const Admin = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="price_per_hour">Price per Hour (₹) *</Label>
+                            <Label htmlFor="price_per_hour">Price per Hour (₹)</Label>
                             <Input
                               id="price_per_hour"
                               type="number"
                               value={bikeForm.price_per_hour}
                               onChange={(e) => setBikeForm({ ...bikeForm, price_per_hour: e.target.value })}
-                              required
+                              placeholder="Optional"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="price_per_day">Price per Day (₹)</Label>
+                            <Input
+                              id="price_per_day"
+                              type="number"
+                              value={bikeForm.price_per_day}
+                              onChange={(e) => setBikeForm({ ...bikeForm, price_per_day: e.target.value })}
+                              placeholder="Optional"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="price_per_week">Price per Week (₹)</Label>
+                            <Input
+                              id="price_per_week"
+                              type="number"
+                              value={bikeForm.price_per_week}
+                              onChange={(e) => setBikeForm({ ...bikeForm, price_per_week: e.target.value })}
+                              placeholder="Optional"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="price_per_month">Price per Month (₹)</Label>
+                            <Input
+                              id="price_per_month"
+                              type="number"
+                              value={bikeForm.price_per_month}
+                              onChange={(e) => setBikeForm({ ...bikeForm, price_per_month: e.target.value })}
+                              placeholder="Optional"
                             />
                           </div>
                         </div>
@@ -812,6 +1070,7 @@ const Admin = () => {
                       </form>
                     </DialogContent>
                   </Dialog>
+                    </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -819,10 +1078,18 @@ const Admin = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectAllBikes}
+                            onCheckedChange={(checked) => handleSelectAllBikes(checked as boolean, bikes)}
+                          />
+                          <span className="ml-2 text-xs text-muted-foreground">Select All</span>
+                        </TableHead>
                         <TableHead>Image</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>CC</TableHead>
-                        <TableHead>Price/hr</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Other Prices</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -830,13 +1097,19 @@ const Admin = () => {
                     <TableBody>
                       {bikes.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                             No bikes found. Add your first bike to get started.
                           </TableCell>
                         </TableRow>
                       ) : (
                         bikes.map((bike) => (
                           <TableRow key={bike.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedBikes.includes(bike.id)}
+                                onCheckedChange={(checked) => handleBikeSelection(bike.id, checked as boolean)}
+                              />
+                            </TableCell>
                             <TableCell>
                               <img
                                 src={bike.image_url}
@@ -846,7 +1119,22 @@ const Admin = () => {
                             </TableCell>
                             <TableCell className="font-medium">{bike.name}</TableCell>
                             <TableCell>{bike.cc} CC</TableCell>
-                            <TableCell>₹{bike.price_per_hour}</TableCell>
+                            <TableCell>
+                              {bike.price_per_hour ? `₹${bike.price_per_hour}` : 
+                               bike.price_per_day ? `₹${bike.price_per_day}/day` :
+                               bike.price_per_week ? `₹${bike.price_per_week}/week` :
+                               bike.price_per_month ? `₹${bike.price_per_month}/month` : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {bike.price_per_day && <div>Day: ₹{bike.price_per_day}</div>}
+                                {bike.price_per_week && <div>Week: ₹{bike.price_per_week}</div>}
+                                {bike.price_per_month && <div>Month: ₹{bike.price_per_month}</div>}
+                                {!bike.price_per_day && !bike.price_per_week && !bike.price_per_month && (
+                                  <div className="text-muted-foreground">-</div>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <Badge variant="outline" className={statusColors[bike.status]}>
                                 {bike.status === 'available' ? 'Available' : 
@@ -871,13 +1159,165 @@ const Admin = () => {
                                 >
                                   <Copy className="h-4 w-4" />
                                 </Button>
+                                {bike.status === 'available' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteBike(bike)}
+                                    title="Delete live bike"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {bike.status !== 'available' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteBike(bike)}
+                                    title="Delete bike"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Live Bikes Management */}
+          <TabsContent value="live" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Live Bikes Management</CardTitle>
+                    <CardDescription>
+                      Manage bikes that are currently available for booking
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {bikes.filter(b => b.status === 'available').length} live bikes
+                    </span>
+                    {selectedBikes.filter(id => bikes.find(b => b.id === id && b.status === 'available')).length > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDeleteBikes}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Selected ({selectedBikes.filter(id => bikes.find(b => b.id === id && b.status === 'available')).length})
+                      </Button>
+                    )}
+                    {bikes.filter(b => b.status === 'available').length > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete all ${bikes.filter(b => b.status === 'available').length} live bikes? This action cannot be undone.`)) {
+                            bikes.filter(b => b.status === 'available').forEach(bike => {
+                              handleDeleteBike(bike);
+                            });
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete All Live
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectAllBikes && bikes.filter(b => b.status === 'available').length > 0}
+                            onCheckedChange={(checked) => handleSelectAllBikes(checked as boolean, bikes.filter(b => b.status === 'available'))}
+                          />
+                          <span className="ml-2 text-xs text-muted-foreground">Select All</span>
+                        </TableHead>
+                        <TableHead>Image</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>CC</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bikes.filter(b => b.status === 'available').length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            No live bikes found. Set some bikes to "Available" status to see them here.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        bikes.filter(b => b.status === 'available').map((bike) => (
+                          <TableRow key={bike.id} className="bg-green-50/50">
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedBikes.includes(bike.id)}
+                                onCheckedChange={(checked) => handleBikeSelection(bike.id, checked as boolean)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <img
+                                src={bike.image_url}
+                                alt={bike.name}
+                                className="w-16 h-16 object-cover rounded"
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium">{bike.name}</TableCell>
+                            <TableCell>{bike.cc} CC</TableCell>
+                            <TableCell>
+                              {bike.price_per_hour ? `₹${bike.price_per_hour}` : 
+                               bike.price_per_day ? `₹${bike.price_per_day}/day` :
+                               bike.price_per_week ? `₹${bike.price_per_week}/week` :
+                               bike.price_per_month ? `₹${bike.price_per_month}/month` : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="default" className="bg-green-500 text-white">
+                                <Activity className="h-3 w-3 mr-1" />
+                                Live
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleDeleteBike(bike)}
-                                  title="Delete bike"
+                                  onClick={() => handleEditBike(bike)}
+                                  title="Edit bike"
                                 >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDuplicateBike(bike)}
+                                  title="Duplicate bike"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  onClick={() => handleDeleteBike(bike)}
+                                  title="Delete live bike"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -895,16 +1335,52 @@ const Admin = () => {
           <TabsContent value="tracker" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Booking Intents Tracker</CardTitle>
-                <CardDescription>
-                  Track every time a customer clicks the WhatsApp booking button
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Booking Intents Tracker</CardTitle>
+                    <CardDescription>
+                      Track every time a customer clicks the WhatsApp booking button
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {bookingIntents.length} total intents
+                    </span>
+                    {selectedIntents.length > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDeleteIntents}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Selected ({selectedIntents.length})
+                      </Button>
+                    )}
+                    {bookingIntents.length > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleDeleteAllBookingIntents}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete All
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectAllIntents}
+                            onCheckedChange={(checked) => handleSelectAllIntents(checked as boolean)}
+                          />
+                          <span className="ml-2 text-xs text-muted-foreground">Select All</span>
+                        </TableHead>
                         <TableHead>Date & Time</TableHead>
                         <TableHead>Bike</TableHead>
                         <TableHead>Pickup Location</TableHead>
@@ -912,18 +1388,25 @@ const Admin = () => {
                         <TableHead>Drop Date</TableHead>
                         <TableHead>Duration</TableHead>
                         <TableHead>Total Price</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {bookingIntents.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             No booking intents yet. They will appear here when customers click the booking button.
                           </TableCell>
                         </TableRow>
                       ) : (
                         bookingIntents.map((intent) => (
                           <TableRow key={intent.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedIntents.includes(intent.id)}
+                                onCheckedChange={(checked) => handleIntentSelection(intent.id, checked as boolean)}
+                              />
+                            </TableCell>
                             <TableCell>
                               {new Date(intent.created_at).toLocaleString()}
                             </TableCell>
@@ -933,6 +1416,17 @@ const Admin = () => {
                             <TableCell>{intent.drop_date}</TableCell>
                             <TableCell>{intent.total_hours} hours</TableCell>
                             <TableCell className="font-semibold">₹{intent.total_price}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteBookingIntent(intent.id, intent.bike_name)}
+                                title="Delete booking intent"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))
                       )}

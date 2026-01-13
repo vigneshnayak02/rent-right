@@ -79,8 +79,40 @@ const BikeCard = ({ bike, searchParams = '' }: BikeCardProps) => {
       <CardFooter className="p-4 pt-0 flex items-center justify-between">
         {/* Price */}
         <div>
-          <span className="text-2xl font-display font-bold text-primary">₹{bike.price_per_hour}</span>
-          <span className="text-muted-foreground text-sm">/hr</span>
+          <div className="text-2xl font-display font-bold text-primary">
+            {bike.price_per_hour ? (
+              <>
+                ₹{bike.price_per_hour}
+                <span className="text-muted-foreground text-sm">/hr</span>
+              </>
+            ) : bike.price_per_day ? (
+              <>
+                ₹{bike.price_per_day}
+                <span className="text-muted-foreground text-sm">/day</span>
+              </>
+            ) : bike.price_per_week ? (
+              <>
+                ₹{bike.price_per_week}
+                <span className="text-muted-foreground text-sm">/week</span>
+              </>
+            ) : bike.price_per_month ? (
+              <>
+                ₹{bike.price_per_month}
+                <span className="text-muted-foreground text-sm">/month</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Price not set</span>
+            )}
+          </div>
+          
+          {/* Additional Prices */}
+          {(bike.price_per_day || bike.price_per_week || bike.price_per_month) && (
+            <div className="flex flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
+              {bike.price_per_day && <span>Day: ₹{bike.price_per_day}</span>}
+              {bike.price_per_week && <span>Week: ₹{bike.price_per_week}</span>}
+              {bike.price_per_month && <span>Month: ₹{bike.price_per_month}</span>}
+            </div>
+          )}
         </div>
 
         {/* Book Button */}
