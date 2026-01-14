@@ -34,7 +34,7 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
     console.log('Bucket check error:', bucketError);
   }
 
-  // Direct upload to Supabase
+  // Try direct upload to Supabase
   try {
     const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
       cacheControl: '3600',
@@ -70,6 +70,13 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
     return publicUrl;
   } catch (err) {
     console.error('uploadBikeImage failed:', err);
+    
+    // Fallback: try alternative bucket if main fails
+    if (bucket === 'rent-right-images' && availableBuckets.includes('psbike-images')) {
+      console.log('Trying fallback to psbike-images bucket...');
+      return uploadBikeImage(file, bikeId); // Recursive call with fallback
+    }
+    
     throw err;
   }
 };
