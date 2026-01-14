@@ -14,9 +14,15 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
   console.log("Upload path:", path, "Bucket:", bucket);
 
   // Try to create bucket first if it doesn't exist
+  let availableBuckets: string[] = [];
   try {
     const { data: buckets } = await supabase.storage.listBuckets();
-    const bucketExists = buckets?.some(b => b.name === bucket);
+    availableBuckets = buckets?.map(b => b.name) || [];
+    const bucketExists = availableBuckets.includes(bucket);
+    
+    console.log('Available buckets:', availableBuckets);
+    console.log('Target bucket:', bucket);
+    console.log('Bucket exists:', bucketExists);
     
     if (!bucketExists) {
       console.log('Bucket does not exist, cannot create with client key:', bucket);
@@ -25,6 +31,7 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
     }
   } catch (bucketError) {
     console.log('Cannot check bucket with client key, continuing with upload');
+    console.log('Bucket check error:', bucketError);
   }
 
   // Direct upload to Supabase
@@ -37,10 +44,21 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
 
     if (error) {
       console.error('Supabase upload error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       
       // If bucket doesn't exist, provide helpful error
       if (error.message?.includes('bucket') || error.message?.includes('not found')) {
-        throw new Error(`Bucket '${bucket}' not found. Please create the bucket in Supabase dashboard and make it public.`);
+        throw new Error(`Bucket '${bucket}' not found. Please create the bucket in Supabase dashboard and make it public. Available buckets: ${availableBuckets.join(', ') || 'none'}`);
+      }
+      
+      // If permission error, provide guidance
+      if (error.message?.includes('permission') || error.message?.includes('denied')) {
+        throw new Error(`Permission denied for bucket '${bucket}'. Please check bucket policies and ensure public access is enabled.`);
+      }
+      
+      // If RLS error, provide guidance
+      if (error.message?.includes('RLS') || error.message?.includes('row level security')) {
+        throw new Error(`Row Level Security policy error for bucket '${bucket}'. Please check storage policies in Supabase dashboard.`);
       }
       
       throw error;
