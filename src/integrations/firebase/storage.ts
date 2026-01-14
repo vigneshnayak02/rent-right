@@ -1,11 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
 
-const DEFAULT_SUPABASE_BUCKET = import.meta.env.VITE_SUPABASE_BUCKET || 'public';
+const DEFAULT_SUPABASE_BUCKET = import.meta.env.VITE_SUPABASE_BUCKET || 'psbike-images';
 const BIKES_IMAGES_PATH = 'bikes/images';
 
-// Upload bike image using server-side endpoint (service role) if available, otherwise use Supabase client
+// Upload bike image directly to Supabase (no server required)
 export const uploadBikeImage = async (file: File, bikeId: string): Promise<string> => {
-  console.log("Starting image upload for bike:", bikeId, "File:", file.name);
+  console.log("Starting direct Supabase upload for bike:", bikeId, "File:", file.name);
   const timestamp = Date.now();
   const fileName = `${bikeId}_${timestamp}_${file.name}`;
   const path = `bikes/${fileName}`;
@@ -13,41 +13,36 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
 
   console.log("Upload path:", path, "Bucket:", bucket);
 
-  // Try server-side upload first
-  const serverUploadUrl = import.meta.env.VITE_SERVER_UPLOAD_URL || 'http://localhost:3001/upload';
-  console.log("Trying server upload at:", serverUploadUrl);
+  // Try to create bucket first if it doesn't exist
   try {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    form.append('path', path);
-
-    try {
-      const resp = await fetch(serverUploadUrl, { method: 'POST', body: form });
-      if (resp.ok) {
-        const json = await resp.json();
-        console.debug('Server-side upload succeeded', json);
-        return json.publicUrl || json.url || json.public_url || '';
-      }
-      let bodyText = '';
-      try { bodyText = await resp.text(); } catch { bodyText = '<unable to read body>'; }
-      console.debug('Server-side upload returned non-OK:', resp.status, bodyText);
-    } catch (serverErr) {
-      console.debug('Server-side upload not available or failed:', serverErr);
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const bucketExists = buckets?.some(b => b.name === bucket);
+    
+    if (!bucketExists) {
+      console.log('Bucket does not exist, cannot create with client key:', bucket);
+      // For production, we'll need to handle this differently
+      // For now, try to upload anyway
     }
-  } catch (e) {
-    console.debug('Server upload attempt error:', e);
+  } catch (bucketError) {
+    console.log('Cannot check bucket with client key, continuing with upload');
   }
 
-  // Fallback to client-side Supabase upload
+  // Direct upload to Supabase
   try {
     const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
       cacheControl: '3600',
-      upsert: false,
+      upsert: true, // Allow overwriting for production
       contentType: file.type
     });
 
     if (error) {
       console.error('Supabase upload error:', error);
+      
+      // If bucket doesn't exist, provide helpful error
+      if (error.message?.includes('bucket') || error.message?.includes('not found')) {
+        throw new Error(`Bucket '${bucket}' not found. Please create the bucket in Supabase dashboard and make it public.`);
+      }
+      
       throw error;
     }
 
