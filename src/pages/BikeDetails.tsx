@@ -206,7 +206,7 @@ const BikeDetails = () => {
 💰 *Total Price:* ₹${totalPrice}
 
 ━━━━━━━━━━━━━━━━
-`.trim();
+    `.trim();
 
     const encodedMessage = encodeURIComponent(message);
     // Target WhatsApp number (India country code +91): 9985819038 -> 919985819038
