@@ -29,6 +29,33 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     const file = req.file;
     const userPath = req.body.path || `bikes/${Date.now()}_${file.originalname}`;
 
+    console.log('Uploading to bucket:', SUPABASE_BUCKET);
+    console.log('File path:', userPath);
+
+    // Check if bucket exists, create if it doesn't
+    try {
+      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+      const bucketExists = buckets.some(bucket => bucket.name === SUPABASE_BUCKET);
+      
+      if (!bucketExists) {
+        console.log('Bucket does not exist, creating:', SUPABASE_BUCKET);
+        const { error: createError } = await supabaseAdmin.storage.createBucket(SUPABASE_BUCKET, {
+          public: true,
+          fileSizeLimit: 52428800, // 50MB
+          allowedMimeTypes: ['image/*']
+        });
+        
+        if (createError) {
+          console.error('Failed to create bucket:', createError);
+          return res.status(500).json({ error: `Bucket creation failed: ${createError.message}` });
+        }
+        console.log('Bucket created successfully:', SUPABASE_BUCKET);
+      }
+    } catch (bucketError) {
+      console.error('Bucket check error:', bucketError);
+      // Continue with upload attempt even if bucket check fails
+    }
+
     const { data, error } = await supabaseAdmin.storage.from(SUPABASE_BUCKET).upload(userPath, file.buffer, {
       contentType: file.mimetype,
       cacheControl: '3600',
@@ -37,19 +64,51 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
     if (error) {
       console.error('Supabase admin upload error:', error);
-      return res.status(500).json({ error: error.message || error });
+      return res.status(500).json({ 
+        error: error.message || error,
+        bucket: SUPABASE_BUCKET,
+        path: userPath
+      });
     }
 
     const { data: publicData } = supabaseAdmin.storage.from(SUPABASE_BUCKET).getPublicUrl(userPath);
     const publicUrl = publicData?.publicUrl || `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(userPath)}`;
 
-    return res.json({ publicUrl, path: userPath, raw: data });
+    console.log('Upload successful:', { publicUrl, bucket: SUPABASE_BUCKET });
+
+    return res.json({ 
+      publicUrl, 
+      path: userPath, 
+      bucket: SUPABASE_BUCKET,
+      raw: data 
+    });
   } catch (err) {
     console.error('Upload endpoint error:', err);
+    return res.status(500).json({ 
+      error: String(err),
+      bucket: SUPABASE_BUCKET
+    });
+  }
+});
+
+// GET /buckets - list all buckets (for debugging)
+app.get('/buckets', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.storage.listBuckets();
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+    return res.json({ 
+      buckets: data,
+      currentBucket: SUPABASE_BUCKET 
+    });
+  } catch (err) {
     return res.status(500).json({ error: String(err) });
   }
 });
 
 app.listen(PORT, () => {
   console.log(`Supabase upload server listening on http://localhost:${PORT}`);
+  console.log(`Using bucket: ${SUPABASE_BUCKET}`);
+  console.log(`Debug buckets at: http://localhost:${PORT}/buckets`);
 });
