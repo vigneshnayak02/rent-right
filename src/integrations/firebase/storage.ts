@@ -1,11 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
 
-const DEFAULT_SUPABASE_BUCKET = import.meta.env.VITE_SUPABASE_BUCKET || 'psbike-images';
+const DEFAULT_SUPABASE_BUCKET = import.meta.env.VITE_SUPABASE_BUCKET || 'images';
 const BIKES_IMAGES_PATH = 'bikes/images';
 
-// Upload bike image directly to Supabase (no server required)
+// Upload bike image using server-side endpoint (service role) if available, otherwise use Supabase client
 export const uploadBikeImage = async (file: File, bikeId: string): Promise<string> => {
-  console.log("Starting direct Supabase upload for bike:", bikeId, "File:", file.name);
+  console.log("Starting image upload for bike:", bikeId, "File:", file.name);
   const timestamp = Date.now();
   const fileName = `${bikeId}_${timestamp}_${file.name}`;
   const path = `bikes/${fileName}`;
@@ -13,28 +13,32 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
 
   console.log("Upload path:", path, "Bucket:", bucket);
 
-  // Try to create bucket first if it doesn't exist
-  let availableBuckets: string[] = [];
+  // Try server-side upload first (with service role key)
+  const serverUploadUrl = import.meta.env.VITE_SERVER_UPLOAD_URL || 'http://localhost:3001/upload';
+  console.log("Trying server upload at:", serverUploadUrl);
   try {
-    const { data: buckets } = await supabase.storage.listBuckets();
-    availableBuckets = buckets?.map(b => b.name) || [];
-    const bucketExists = availableBuckets.includes(bucket);
-    
-    console.log('Available buckets:', availableBuckets);
-    console.log('Target bucket:', bucket);
-    console.log('Bucket exists:', bucketExists);
-    
-    if (!bucketExists) {
-      console.log('Bucket does not exist, cannot create with client key:', bucket);
-      // For production, we'll need to handle this differently
-      // For now, try to upload anyway
+    const form = new FormData();
+    form.append('file', file, file.name);
+    form.append('path', path);
+
+    try {
+      const resp = await fetch(serverUploadUrl, { method: 'POST', body: form });
+      if (resp.ok) {
+        const json = await resp.json();
+        console.debug('Server-side upload succeeded', json);
+        return json.publicUrl || json.url || json.public_url || '';
+      }
+      let bodyText = '';
+      try { bodyText = await resp.text(); } catch { bodyText = '<unable to read body>'; }
+      console.debug('Server-side upload returned non-OK:', resp.status, bodyText);
+    } catch (serverErr) {
+      console.debug('Server-side upload not available or failed:', serverErr);
     }
-  } catch (bucketError) {
-    console.log('Cannot check bucket with client key, continuing with upload');
-    console.log('Bucket check error:', bucketError);
+  } catch (e) {
+    console.debug('Server upload attempt error:', e);
   }
 
-  // Try direct upload to Supabase
+  // Fallback to client-side Supabase upload
   try {
     const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
       cacheControl: '3600',
@@ -48,7 +52,7 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
       
       // If bucket doesn't exist, provide helpful error
       if (error.message?.includes('bucket') || error.message?.includes('not found')) {
-        throw new Error(`Bucket '${bucket}' not found. Please create the bucket in Supabase dashboard and make it public. Available buckets: ${availableBuckets.join(', ') || 'none'}`);
+        throw new Error(`Bucket '${bucket}' not found. Please create the bucket in Supabase dashboard and make it public.`);
       }
       
       // If permission error, provide guidance
@@ -70,13 +74,6 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
     return publicUrl;
   } catch (err) {
     console.error('uploadBikeImage failed:', err);
-    
-    // Fallback: try alternative bucket if main fails
-    if (bucket === 'rent-right-images' && availableBuckets.includes('psbike-images')) {
-      console.log('Trying fallback to psbike-images bucket...');
-      return uploadBikeImage(file, bikeId); // Recursive call with fallback
-    }
-    
     throw err;
   }
 };
