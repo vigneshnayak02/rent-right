@@ -1458,7 +1458,12 @@ const Admin = () => {
                             <TableCell>
                               {new Date(intent.created_at).toLocaleString()}
                             </TableCell>
-                            <TableCell className="font-medium">{intent.bike_id}</TableCell>
+                            <TableCell className="font-medium">
+                              {(() => {
+                                const bike = bikes.find(b => b.id === intent.bike_id);
+                                return bike?.bike_number || 'N/A';
+                              })()}
+                            </TableCell>
                             <TableCell className="font-medium">{intent.bike_name}</TableCell>
                             <TableCell>{intent.pickup_location}</TableCell>
                             <TableCell>{intent.pickup_date}</TableCell>

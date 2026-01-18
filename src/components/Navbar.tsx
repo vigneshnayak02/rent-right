@@ -11,8 +11,8 @@ const Navbar = () => {
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Bikes', path: '/bikes' },
-    { name: 'About', path: '/about' },
-    { name: 'Contact', path: '/contact' },
+    { name: 'About', path: '/bikes' }, // Redirect to bikes
+    { name: 'Contact', path: '/bikes' }, // Redirect to bikes
   ];
 
   const isActive = (path: string) => location.pathname === path;
