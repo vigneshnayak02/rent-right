@@ -57,15 +57,15 @@ const Bikes = () => {
     };
   }, []);
 
-  // Get unique CC ranges and engine types (only from available bikes)
-  const availableBikes = bikes.filter(b => b.status === 'available');
+  // Get unique CC ranges and engine types (from all bikes)
+  const allBikes = bikes;
   const ccRanges = ['all', '100-150', '150-250', '250-500', '500+'];
-  const engineTypes = ['all', ...new Set(availableBikes.map(b => b.engine_type))];
+  const engineTypes = ['all', ...new Set(allBikes.map(b => b.engine_type))];
 
   // Filter and sort bikes
   const filteredBikes = useMemo(() => {
-    // Only show available bikes on the website
-    let filtered = bikes.filter(b => b.status === 'available');
+    // Show both available and rented bikes on the website
+    let filtered = bikes.filter(b => b.status === 'available' || b.status === 'rented');
 
     // Filter by CC range
     if (filterCC !== 'all') {
@@ -84,6 +84,10 @@ const Bikes = () => {
     switch (sortBy) {
       case 'price-low':
         filtered.sort((a, b) => {
+          // Prioritize available bikes first
+          if (a.status === 'available' && b.status !== 'available') return -1;
+          if (a.status !== 'available' && b.status === 'available') return 1;
+          
           const aPrice = a.price_per_hour || a.price_per_day || a.price_per_week || a.price_per_month || 0;
           const bPrice = b.price_per_hour || b.price_per_day || b.price_per_week || b.price_per_month || 0;
           return aPrice - bPrice;
@@ -91,16 +95,32 @@ const Bikes = () => {
         break;
       case 'price-high':
         filtered.sort((a, b) => {
+          // Prioritize available bikes first
+          if (a.status === 'available' && b.status !== 'available') return -1;
+          if (a.status !== 'available' && b.status === 'available') return 1;
+          
           const aPrice = a.price_per_hour || a.price_per_day || a.price_per_week || a.price_per_month || 0;
           const bPrice = b.price_per_hour || b.price_per_day || b.price_per_week || b.price_per_month || 0;
           return bPrice - aPrice;
         });
         break;
       case 'cc-low':
-        filtered.sort((a, b) => a.cc - b.cc);
+        filtered.sort((a, b) => {
+          // Prioritize available bikes first
+          if (a.status === 'available' && b.status !== 'available') return -1;
+          if (a.status !== 'available' && b.status === 'available') return 1;
+          
+          return a.cc - b.cc;
+        });
         break;
       case 'cc-high':
-        filtered.sort((a, b) => b.cc - a.cc);
+        filtered.sort((a, b) => {
+          // Prioritize available bikes first
+          if (a.status === 'available' && b.status !== 'available') return -1;
+          if (a.status !== 'available' && b.status === 'available') return 1;
+          
+          return b.cc - a.cc;
+        });
         break;
     }
 
