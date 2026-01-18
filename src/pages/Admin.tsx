@@ -1411,7 +1411,6 @@ const Admin = () => {
                         </TableHead>
                         <TableHead>Date & Time</TableHead>
                         <TableHead>Bike</TableHead>
-                        <TableHead>Bike Number</TableHead>
                         <TableHead>Pickup Location</TableHead>
                         <TableHead>Pickup Date</TableHead>
                         <TableHead>Drop Date</TableHead>
@@ -1423,7 +1422,7 @@ const Admin = () => {
                     <TableBody>
                       {bookingIntents.filter(intent => intent.booking_status !== 'booked').length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             No pending booking intents. All booking intents have been marked as booked or there are no intents yet.
                           </TableCell>
                         </TableRow>
@@ -1457,11 +1456,6 @@ const Admin = () => {
                                   </div>
                                 </div>
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className="font-mono text-sm">
-                                {bike?.bike_number || 'N/A'}
-                              </span>
                             </TableCell>
                             <TableCell>{intent.pickup_location}</TableCell>
                             <TableCell>{intent.pickup_date}</TableCell>
@@ -1530,7 +1524,7 @@ const Admin = () => {
                         <TableHead>Date & Time</TableHead>
                         <TableHead>Bike</TableHead>
                         <TableHead>Bike Number</TableHead>
-                        <TableHead>Customer Details</TableHead>
+                        <TableHead>Customer</TableHead>
                         <TableHead>Pickup Location</TableHead>
                         <TableHead>Pickup Date</TableHead>
                         <TableHead>Drop Date</TableHead>
@@ -1542,7 +1536,7 @@ const Admin = () => {
                     <TableBody>
                       {bookingIntents.filter(intent => intent.booking_status === 'booked').length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             No confirmed bookings yet. Mark booking intents as "Booked" in the Live Tracker to see them here.
                           </TableCell>
                         </TableRow>
@@ -1557,32 +1551,33 @@ const Admin = () => {
                                   {new Date(intent.created_at).toLocaleString()}
                                 </TableCell>
                                 <TableCell>
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-3 min-w-0">
                                     <img
                                       src={bike?.image_url || '/placeholder-bike.jpg'}
                                       alt={intent.bike_name}
-                                      className="w-12 h-12 object-cover rounded"
+                                      className="w-16 h-16 object-cover rounded flex-shrink-0"
                                     />
-                                    <div>
+                                    <div className="flex-1 min-w-0">
                                       <div className="font-medium">{intent.bike_name}</div>
                                       <div className="text-sm text-muted-foreground">
                                         {bike?.cc} CC • {bike?.engine_type}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        Bike #: {bike?.bike_number || 'N/A'}
                                       </div>
                                     </div>
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <span className="font-mono text-sm">
-                                    {bike?.bike_number || 'N/A'}
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="space-y-1">
+                                  <div className="space-y-2">
                                     <div className="font-medium">
                                       {intent.customer_phone || 'Phone not provided'}
                                     </div>
                                     <div className="text-sm text-muted-foreground">
                                       WhatsApp booking
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {intent.pickup_location}
                                     </div>
                                   </div>
                                 </TableCell>
