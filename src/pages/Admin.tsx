@@ -1454,6 +1454,9 @@ const Admin = () => {
                                   <div className="text-sm text-muted-foreground">
                                     {bike?.cc} CC • {bike?.engine_type}
                                   </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Bike #: {bike?.bike_number || 'N/A'}
+                                  </div>
                                 </div>
                               </div>
                             </TableCell>
@@ -1523,7 +1526,6 @@ const Admin = () => {
                       <TableRow>
                         <TableHead>Date & Time</TableHead>
                         <TableHead>Bike</TableHead>
-                        <TableHead>Bike Number</TableHead>
                         <TableHead>Customer</TableHead>
                         <TableHead>Pickup Location</TableHead>
                         <TableHead>Pickup Date</TableHead>
@@ -1581,7 +1583,6 @@ const Admin = () => {
                                     </div>
                                   </div>
                                 </TableCell>
-                                <TableCell>{intent.pickup_location}</TableCell>
                                 <TableCell>{intent.pickup_date}</TableCell>
                                 <TableCell>{intent.drop_date}</TableCell>
                                 <TableCell>{intent.total_hours} hours</TableCell>
