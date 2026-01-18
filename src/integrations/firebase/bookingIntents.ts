@@ -85,3 +85,9 @@ export const deleteAllBookingIntents = async (): Promise<void> => {
   const intentsRef = ref(database, BOOKING_INTENTS_PATH);
   await remove(intentsRef);
 };
+
+// Update a booking intent
+export const updateBookingIntent = async (intentId: string, updates: Partial<BookingIntent>): Promise<void> => {
+  const intentRef = ref(database, `${BOOKING_INTENTS_PATH}/${intentId}`);
+  await set(intentRef, updates);
+};

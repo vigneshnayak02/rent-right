@@ -32,7 +32,8 @@ import {
   getBookingIntents, 
   subscribeToBookingIntents,
   deleteBookingIntent,
-  deleteAllBookingIntents
+  deleteAllBookingIntents,
+  updateBookingIntent
 } from '@/integrations/firebase/bookingIntents';
 import { uploadBikeImage, deleteBikeImage } from '@/integrations/firebase/storage';
 import { 
@@ -680,6 +681,32 @@ const Admin = () => {
     }
   };
 
+  const handleBookingStatusChange = async (intentId: string, newStatus: 'not_booked' | 'booked') => {
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to update booking status",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateBookingIntent(intentId, { booking_status: newStatus });
+      toast({
+        title: "Booking status updated",
+        description: `Booking marked as ${newStatus === 'booked' ? 'confirmed' : 'not confirmed'}`,
+      });
+    } catch (error: any) {
+      console.error("Error updating booking status:", error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to update booking status',
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -819,6 +846,7 @@ const Admin = () => {
             <TabsTrigger value="inventory">Inventory Manager</TabsTrigger>
             <TabsTrigger value="live">Live Bikes</TabsTrigger>
             <TabsTrigger value="tracker">Live Tracker</TabsTrigger>
+            <TabsTrigger value="booking">Bookings</TabsTrigger>
             <TabsTrigger value="status">Status Toggle</TabsTrigger>
           </TabsList>
 
@@ -1344,7 +1372,7 @@ const Admin = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">
-                      {bookingIntents.length} total intents
+                      {bookingIntents.filter(intent => intent.booking_status !== 'booked').length} pending intents
                     </span>
                     {selectedIntents.length > 0 && (
                       <Button
@@ -1356,7 +1384,7 @@ const Admin = () => {
                         Delete Selected ({selectedIntents.length})
                       </Button>
                     )}
-                    {bookingIntents.length > 0 && (
+                    {bookingIntents.filter(intent => intent.booking_status !== 'booked').length > 0 && (
                       <Button
                         variant="destructive"
                         size="sm"
@@ -1392,14 +1420,16 @@ const Admin = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {bookingIntents.length === 0 ? (
+                      {bookingIntents.filter(intent => intent.booking_status !== 'booked').length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                            No booking intents yet. They will appear here when customers click the booking button.
+                            No pending booking intents. All booking intents have been marked as booked or there are no intents yet.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        bookingIntents.map((intent) => (
+                        bookingIntents
+                          .filter(intent => intent.booking_status !== 'booked')
+                          .map((intent) => (
                           <TableRow key={intent.id}>
                             <TableCell>
                               <Checkbox
@@ -1417,18 +1447,129 @@ const Admin = () => {
                             <TableCell>{intent.total_hours} hours</TableCell>
                             <TableCell className="font-semibold">₹{intent.total_price}</TableCell>
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteBookingIntent(intent.id, intent.bike_name)}
-                                title="Delete booking intent"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Select
+                                  value={intent.booking_status || 'not_booked'}
+                                  onValueChange={(value) => handleBookingStatusChange(intent.id, value as 'not_booked' | 'booked')}
+                                >
+                                  <SelectTrigger className="w-32">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="not_booked">Not Booked</SelectItem>
+                                    <SelectItem value="booked">Booked</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteBookingIntent(intent.id, intent.bike_name)}
+                                  title="Delete booking intent"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Bookings */}
+          <TabsContent value="booking" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Confirmed Bookings</CardTitle>
+                    <CardDescription>
+                      All confirmed bookings with full bike details and pricing
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {bookingIntents.filter(intent => intent.booking_status === 'booked').length} confirmed bookings
+                    </span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date & Time</TableHead>
+                        <TableHead>Bike</TableHead>
+                        <TableHead>Customer Details</TableHead>
+                        <TableHead>Pickup Location</TableHead>
+                        <TableHead>Pickup Date</TableHead>
+                        <TableHead>Drop Date</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Total Price</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bookingIntents.filter(intent => intent.booking_status === 'booked').length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                            No confirmed bookings yet. Mark booking intents as "Booked" in the Live Tracker to see them here.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        bookingIntents
+                          .filter(intent => intent.booking_status === 'booked')
+                          .map((intent) => {
+                            const bike = bikes.find(b => b.id === intent.bike_id);
+                            return (
+                              <TableRow key={intent.id}>
+                                <TableCell>
+                                  {new Date(intent.created_at).toLocaleString()}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-3">
+                                    <img
+                                      src={bike?.image_url || '/placeholder-bike.jpg'}
+                                      alt={intent.bike_name}
+                                      className="w-12 h-12 object-cover rounded"
+                                    />
+                                    <div>
+                                      <div className="font-medium">{intent.bike_name}</div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {bike?.cc} CC • {bike?.engine_type}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    <div className="font-medium">
+                                      {intent.customer_phone || 'Phone not provided'}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      WhatsApp booking
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>{intent.pickup_location}</TableCell>
+                                <TableCell>{intent.pickup_date}</TableCell>
+                                <TableCell>{intent.drop_date}</TableCell>
+                                <TableCell>{intent.total_hours} hours</TableCell>
+                                <TableCell className="font-semibold">₹{intent.total_price}</TableCell>
+                                <TableCell>
+                                  <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
+                                    Confirmed
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
                       )}
                     </TableBody>
                   </Table>
