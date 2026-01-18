@@ -21,8 +21,16 @@ const Index = () => {
     return () => unsubscribe();
   }, []);
 
-  // Get available bikes and limit to 3 for featured
-  const featuredBikes = bikes.filter(b => b.status === 'available').slice(0, 3);
+  // Get available and rented bikes, prioritize available ones for featured
+  const featuredBikes = bikes
+    .filter(b => b.status === 'available' || b.status === 'rented')
+    .sort((a, b) => {
+      // Put available bikes first, then rented bikes
+      if (a.status === 'available' && b.status !== 'available') return -1;
+      if (a.status !== 'available' && b.status === 'available') return 1;
+      return 0;
+    })
+    .slice(0, 3);
 
   const features = [
     {

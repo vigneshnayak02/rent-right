@@ -96,7 +96,7 @@ const Navbar = () => {
                 className="flex items-center gap-2 text-secondary-foreground"
               >
                 <MapPin className="h-4 w-4 text-primary" />
-                <span>4 Locations in Hyderabad</span>
+                <span>1 Location in Hyderabad</span>
               </a>
             </div>
             <Button asChild className="w-full font-display font-bold">
