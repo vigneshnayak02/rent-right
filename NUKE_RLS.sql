@@ -17,8 +17,8 @@ DROP POLICY IF EXISTS "Authenticated Insert" ON storage.objects CASCADE;
 DROP POLICY IF EXISTS "Authenticated Update" ON storage.objects CASCADE;
 DROP POLICY IF EXISTS "Authenticated Delete" ON storage.objects CASCADE;
 
--- Step 3: Force RLS to stay disabled
-ALTER TABLE storage.objects SET (force) ROW LEVEL SECURITY = DISABLED;
+-- Step 3: Force RLS to stay disabled (correct syntax)
+ALTER TABLE storage.objects DISABLE ROW LEVEL SECURITY;
 
 -- Step 4: Make sure bucket is public
 UPDATE storage.buckets 
