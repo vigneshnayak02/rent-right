@@ -1411,6 +1411,7 @@ const Admin = () => {
                         </TableHead>
                         <TableHead>Date & Time</TableHead>
                         <TableHead>Bike</TableHead>
+                        <TableHead>Bike Number</TableHead>
                         <TableHead>Pickup Location</TableHead>
                         <TableHead>Pickup Date</TableHead>
                         <TableHead>Drop Date</TableHead>
@@ -1422,14 +1423,16 @@ const Admin = () => {
                     <TableBody>
                       {bookingIntents.filter(intent => intent.booking_status !== 'booked').length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                             No pending booking intents. All booking intents have been marked as booked or there are no intents yet.
                           </TableCell>
                         </TableRow>
                       ) : (
                         bookingIntents
                           .filter(intent => intent.booking_status !== 'booked')
-                          .map((intent) => (
+                          .map((intent) => {
+                            const bike = bikes.find(b => b.id === intent.bike_id);
+                            return (
                           <TableRow key={intent.id}>
                             <TableCell>
                               <Checkbox
@@ -1440,7 +1443,26 @@ const Admin = () => {
                             <TableCell>
                               {new Date(intent.created_at).toLocaleString()}
                             </TableCell>
-                            <TableCell className="font-medium">{intent.bike_name}</TableCell>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={bike?.image_url || '/placeholder-bike.jpg'}
+                                  alt={intent.bike_name}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                                <div>
+                                  <div className="font-medium">{intent.bike_name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {bike?.cc} CC • {bike?.engine_type}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="font-mono text-sm">
+                                {bike?.bike_number || 'N/A'}
+                              </span>
+                            </TableCell>
                             <TableCell>{intent.pickup_location}</TableCell>
                             <TableCell>{intent.pickup_date}</TableCell>
                             <TableCell>{intent.drop_date}</TableCell>
@@ -1472,7 +1494,8 @@ const Admin = () => {
                               </div>
                             </TableCell>
                           </TableRow>
-                        ))
+                            );
+                          })
                       )}
                     </TableBody>
                   </Table>
@@ -1506,6 +1529,7 @@ const Admin = () => {
                       <TableRow>
                         <TableHead>Date & Time</TableHead>
                         <TableHead>Bike</TableHead>
+                        <TableHead>Bike Number</TableHead>
                         <TableHead>Customer Details</TableHead>
                         <TableHead>Pickup Location</TableHead>
                         <TableHead>Pickup Date</TableHead>
@@ -1518,7 +1542,7 @@ const Admin = () => {
                     <TableBody>
                       {bookingIntents.filter(intent => intent.booking_status === 'booked').length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                             No confirmed bookings yet. Mark booking intents as "Booked" in the Live Tracker to see them here.
                           </TableCell>
                         </TableRow>
@@ -1548,6 +1572,11 @@ const Admin = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell>
+                                  <span className="font-mono text-sm">
+                                    {bike?.bike_number || 'N/A'}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
                                   <div className="space-y-1">
                                     <div className="font-medium">
                                       {intent.customer_phone || 'Phone not provided'}
@@ -1563,9 +1592,18 @@ const Admin = () => {
                                 <TableCell>{intent.total_hours} hours</TableCell>
                                 <TableCell className="font-semibold">₹{intent.total_price}</TableCell>
                                 <TableCell>
-                                  <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
-                                    Confirmed
-                                  </Badge>
+                                  <Select
+                                    value={intent.booking_status || 'booked'}
+                                    onValueChange={(value) => handleBookingStatusChange(intent.id, value as 'not_booked' | 'booked')}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="not_booked">Not Booked</SelectItem>
+                                      <SelectItem value="booked">Booked</SelectItem>
+                                    </SelectContent>
+                                  </Select>
                                 </TableCell>
                               </TableRow>
                             );
