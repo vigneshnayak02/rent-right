@@ -569,6 +569,13 @@ const Admin = () => {
   // Get counts for each status
   const bookedCount = bookingIntents.filter(intent => intent.booked_status === 'booked').length;
   const notBookedCount = bookingIntents.filter(intent => intent.booked_status === 'not_booked').length;
+  
+  // Get counts based on current filter selection
+  const currentFilterCount = bookingStatusFilter === 'all' 
+    ? bookingIntents.length 
+    : bookingStatusFilter === 'booked' 
+    ? bookedCount 
+    : notBookedCount;
 
   // Bulk selection handlers
   const handleBikeSelection = (bikeId: string, checked: boolean) => {
@@ -1383,7 +1390,7 @@ const Admin = () => {
                       </SelectContent>
                     </Select>
                     <span className="text-sm text-muted-foreground">
-                      {filteredBookingIntents.length} shown
+                      {currentFilterCount} shown
                     </span>
                     {selectedIntents.length > 0 && (
                       <Button
@@ -1421,6 +1428,7 @@ const Admin = () => {
                           <span className="ml-2 text-xs text-muted-foreground">Select All</span>
                         </TableHead>
                         <TableHead>Date & Time</TableHead>
+                        <TableHead>Bike Number</TableHead>
                         <TableHead>Bike</TableHead>
                         <TableHead>Pickup Location</TableHead>
                         <TableHead>Pickup Date</TableHead>
@@ -1434,7 +1442,7 @@ const Admin = () => {
                     <TableBody>
                       {filteredBookingIntents.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                             No booking intents found for the selected filter.
                           </TableCell>
                         </TableRow>
@@ -1450,6 +1458,7 @@ const Admin = () => {
                             <TableCell>
                               {new Date(intent.created_at).toLocaleString()}
                             </TableCell>
+                            <TableCell className="font-medium">{intent.bike_id}</TableCell>
                             <TableCell className="font-medium">{intent.bike_name}</TableCell>
                             <TableCell>{intent.pickup_location}</TableCell>
                             <TableCell>{intent.pickup_date}</TableCell>
