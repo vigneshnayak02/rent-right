@@ -3,9 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 const DEFAULT_SUPABASE_BUCKET = import.meta.env.VITE_SUPABASE_BUCKET || 'images';
 const BIKES_IMAGES_PATH = 'bikes/images';
 
-// Upload bike image using server-side endpoint (service role) if available, otherwise use Supabase client
+// Simple Supabase-only upload (no server, no policies needed)
 export const uploadBikeImage = async (file: File, bikeId: string): Promise<string> => {
-  console.log("Starting image upload for bike:", bikeId, "File:", file.name);
+  console.log("Starting simple Supabase upload for bike:", bikeId, "File:", file.name);
   const timestamp = Date.now();
   const fileName = `${bikeId}_${timestamp}_${file.name}`;
   const path = `bikes/${fileName}`;
@@ -13,56 +13,39 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
 
   console.log("Upload path:", path, "Bucket:", bucket);
 
-  // Try server-side upload first (with service role key)
-  const serverUploadUrl = import.meta.env.VITE_SERVER_UPLOAD_URL || 'http://localhost:3001/upload';
-  console.log("Trying server upload at:", serverUploadUrl);
-  try {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    form.append('path', path);
-
-    try {
-      const resp = await fetch(serverUploadUrl, { method: 'POST', body: form });
-      if (resp.ok) {
-        const json = await resp.json();
-        console.debug('Server-side upload succeeded', json);
-        return json.publicUrl || json.url || json.public_url || '';
-      }
-      let bodyText = '';
-      try { bodyText = await resp.text(); } catch { bodyText = '<unable to read body>'; }
-      console.debug('Server-side upload returned non-OK:', resp.status, bodyText);
-    } catch (serverErr) {
-      console.debug('Server-side upload not available or failed:', serverErr);
-    }
-  } catch (e) {
-    console.debug('Server upload attempt error:', e);
-  }
-
-  // Fallback to client-side Supabase upload
+  // Direct upload to Supabase with upsert (overwrite if exists)
   try {
     const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
       cacheControl: '3600',
-      upsert: true, // Allow overwriting for production
+      upsert: true, // Allow overwriting
       contentType: file.type
     });
 
     if (error) {
       console.error('Supabase upload error:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
       
-      // If bucket doesn't exist, provide helpful error
+      // Try to create bucket if it doesn't exist
       if (error.message?.includes('bucket') || error.message?.includes('not found')) {
-        throw new Error(`Bucket '${bucket}' not found. Please create the bucket in Supabase dashboard and make it public.`);
-      }
-      
-      // If permission error, provide guidance
-      if (error.message?.includes('permission') || error.message?.includes('denied')) {
-        throw new Error(`Permission denied for bucket '${bucket}'. Please check bucket policies and ensure public access is enabled.`);
-      }
-      
-      // If RLS error, provide guidance
-      if (error.message?.includes('RLS') || error.message?.includes('row level security')) {
-        throw new Error(`Row Level Security policy error for bucket '${bucket}'. Please check storage policies in Supabase dashboard.`);
+        console.log('Bucket might not exist, trying to create it...');
+        
+        // Try a different approach - use public bucket
+        try {
+          const { data: publicData } = supabase.storage.from('public').upload(path, file, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: file.type
+          });
+          
+          if (publicData) {
+            const { data: publicUrlData } = supabase.storage.from('public').getPublicUrl(path) as any;
+            const publicUrl = publicUrlData?.publicUrl || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${bucket}/${encodeURIComponent(path)}`;
+            console.log('Successfully uploaded to public bucket:', publicUrl);
+            return publicUrl;
+          }
+        } catch (publicError) {
+          console.error('Public bucket upload also failed:', publicError);
+          throw new Error(`Upload failed. Please create bucket '${bucket}' in Supabase dashboard and make it public.`);
+        }
       }
       
       throw error;
@@ -70,7 +53,7 @@ export const uploadBikeImage = async (file: File, bikeId: string): Promise<strin
 
     const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path) as any;
     const publicUrl = publicData?.publicUrl || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${bucket}/${encodeURIComponent(path)}`;
-    console.debug('Uploaded image to Supabase', { bucket, path, publicUrl, data });
+    console.log('Successfully uploaded to Supabase:', { bucket, path, publicUrl });
     return publicUrl;
   } catch (err) {
     console.error('uploadBikeImage failed:', err);
