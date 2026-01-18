@@ -4,6 +4,10 @@ import logo from '@/assets/logo.png';
 import { LOCATIONS } from '@/types/bike';
 
 const Footer = () => {
+  // Scroll to top when navigating
+  const handleNavigation = () => {
+    window.scrollTo(0, 0);
+  };
   return (
     <footer className="bg-secondary text-secondary-foreground">
       <div className="container mx-auto px-4 py-12">
@@ -31,10 +35,10 @@ const Footer = () => {
           <div>
             <h4 className="font-display text-lg font-bold text-primary mb-4">Quick Links</h4>
             <ul className="space-y-2">
-              <li><Link to="/" className="text-muted-foreground hover:text-primary transition-colors">Home</Link></li>
-              <li><Link to="/bikes" className="text-muted-foreground hover:text-primary transition-colors">All Bikes</Link></li>
-              <li><Link to="/bikes" className="text-muted-foreground hover:text-primary transition-colors">About Us</Link></li>
-              <li><Link to="/bikes" className="text-muted-foreground hover:text-primary transition-colors">Contact</Link></li>
+              <li><Link to="/" onClick={handleNavigation} className="text-muted-foreground hover:text-primary transition-colors">Home</Link></li>
+              <li><Link to="/bikes" onClick={handleNavigation} className="text-muted-foreground hover:text-primary transition-colors">All Bikes</Link></li>
+              <li><Link to="/bikes" onClick={handleNavigation} className="text-muted-foreground hover:text-primary transition-colors">About Us</Link></li>
+              <li><Link to="/bikes" onClick={handleNavigation} className="text-muted-foreground hover:text-primary transition-colors">Contact</Link></li>
             </ul>
           </div>
 
