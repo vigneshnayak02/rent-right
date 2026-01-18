@@ -30,8 +30,8 @@ export interface BookingIntent {
   total_hours: number;
   total_price: number;
   customer_phone?: string;
-  booking_status?: 'not_booked' | 'booked';
   created_at: string;
+  booked_status?: 'booked' | 'not_booked'; // New field for live tracker
 }
 
 export interface Location {

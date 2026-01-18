@@ -86,8 +86,19 @@ export const deleteAllBookingIntents = async (): Promise<void> => {
   await remove(intentsRef);
 };
 
-// Update a booking intent
-export const updateBookingIntent = async (intentId: string, updates: Partial<BookingIntent>): Promise<void> => {
+// Update booking intent status
+export const updateBookingIntentStatus = async (
+  intentId: string, 
+  booked_status: 'booked' | 'not_booked'
+): Promise<void> => {
   const intentRef = ref(database, `${BOOKING_INTENTS_PATH}/${intentId}`);
-  await set(intentRef, updates);
+  const snapshot = await get(intentRef);
+  
+  if (snapshot.exists()) {
+    const existingData = snapshot.val();
+    await set(intentRef, {
+      ...existingData,
+      booked_status
+    });
+  }
 };

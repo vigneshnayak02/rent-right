@@ -33,7 +33,7 @@ import {
   subscribeToBookingIntents,
   deleteBookingIntent,
   deleteAllBookingIntents,
-  updateBookingIntent
+  updateBookingIntentStatus
 } from '@/integrations/firebase/bookingIntents';
 import { uploadBikeImage, deleteBikeImage } from '@/integrations/firebase/storage';
 import { 
@@ -60,6 +60,7 @@ const Admin = () => {
   const [loginError, setLoginError] = useState('');
   const [bikes, setBikes] = useState<Bike[]>([]);
   const [bookingIntents, setBookingIntents] = useState<BookingIntent[]>([]);
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'booked' | 'not_booked'>('all');
   const [isBikeDialogOpen, setIsBikeDialogOpen] = useState(false);
   const [editingBike, setEditingBike] = useState<Bike | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -543,6 +544,32 @@ const Admin = () => {
     }
   };
 
+  const handleUpdateBookingStatus = async (intentId: string, booked_status: 'booked' | 'not_booked') => {
+    try {
+      await updateBookingIntentStatus(intentId, booked_status);
+      toast({
+        title: "Status updated",
+        description: `Booking intent marked as ${booked_status}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to update booking status',
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Filter booking intents based on status
+  const filteredBookingIntents = bookingIntents.filter(intent => {
+    if (bookingStatusFilter === 'all') return true;
+    return intent.booked_status === bookingStatusFilter;
+  });
+
+  // Get counts for each status
+  const bookedCount = bookingIntents.filter(intent => intent.booked_status === 'booked').length;
+  const notBookedCount = bookingIntents.filter(intent => intent.booked_status === 'not_booked').length;
+
   // Bulk selection handlers
   const handleBikeSelection = (bikeId: string, checked: boolean) => {
     if (checked) {
@@ -676,32 +703,6 @@ const Admin = () => {
       toast({
         title: "Error",
         description: errorMessage,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleBookingStatusChange = async (intentId: string, newStatus: 'not_booked' | 'booked') => {
-    if (!user) {
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to update booking status",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await updateBookingIntent(intentId, { booking_status: newStatus });
-      toast({
-        title: "Booking status updated",
-        description: `Booking marked as ${newStatus === 'booked' ? 'confirmed' : 'not confirmed'}`,
-      });
-    } catch (error: any) {
-      console.error("Error updating booking status:", error);
-      toast({
-        title: "Error",
-        description: error.message || 'Failed to update booking status',
         variant: "destructive",
       });
     }
@@ -846,7 +847,6 @@ const Admin = () => {
             <TabsTrigger value="inventory">Inventory Manager</TabsTrigger>
             <TabsTrigger value="live">Live Bikes</TabsTrigger>
             <TabsTrigger value="tracker">Live Tracker</TabsTrigger>
-            <TabsTrigger value="booking">Bookings</TabsTrigger>
             <TabsTrigger value="status">Status Toggle</TabsTrigger>
           </TabsList>
 
@@ -1367,12 +1367,23 @@ const Admin = () => {
                   <div>
                     <CardTitle>Booking Intents Tracker</CardTitle>
                     <CardDescription>
-                      Track every time a customer clicks the WhatsApp booking button
+                      Track every time a customer clicks WhatsApp booking button
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Status Filter Dropdown */}
+                    <Select value={bookingStatusFilter} onValueChange={(value: 'all' | 'booked' | 'not_booked') => setBookingStatusFilter(value)}>
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All ({bookingIntents.length})</SelectItem>
+                        <SelectItem value="booked">Booked ({bookedCount})</SelectItem>
+                        <SelectItem value="not_booked">Not Booked ({notBookedCount})</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <span className="text-sm text-muted-foreground">
-                      {bookingIntents.filter(intent => intent.booking_status !== 'booked').length} pending intents
+                      {filteredBookingIntents.length} shown
                     </span>
                     {selectedIntents.length > 0 && (
                       <Button
@@ -1384,7 +1395,7 @@ const Admin = () => {
                         Delete Selected ({selectedIntents.length})
                       </Button>
                     )}
-                    {bookingIntents.filter(intent => intent.booking_status !== 'booked').length > 0 && (
+                    {filteredBookingIntents.length > 0 && (
                       <Button
                         variant="destructive"
                         size="sm"
@@ -1416,23 +1427,20 @@ const Admin = () => {
                         <TableHead>Drop Date</TableHead>
                         <TableHead>Duration</TableHead>
                         <TableHead>Total Price</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {bookingIntents.filter(intent => intent.booking_status !== 'booked').length === 0 ? (
+                      {filteredBookingIntents.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                            No pending booking intents. All booking intents have been marked as booked or there are no intents yet.
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                            No booking intents found for the selected filter.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        bookingIntents
-                          .filter(intent => intent.booking_status !== 'booked')
-                          .map((intent) => {
-                            const bike = bikes.find(b => b.id === intent.bike_id);
-                            return (
-                          <TableRow key={intent.id}>
+                        filteredBookingIntents.map((intent) => (
+                          <TableRow key={intent.id} className={intent.booked_status === 'booked' ? 'bg-green-50/50' : ''}>
                             <TableCell>
                               <Checkbox
                                 checked={selectedIntents.includes(intent.id)}
@@ -1442,24 +1450,7 @@ const Admin = () => {
                             <TableCell>
                               {new Date(intent.created_at).toLocaleString()}
                             </TableCell>
-                            <TableCell className="font-medium">
-                              <div className="flex items-center gap-3">
-                                <img
-                                  src={bike?.image_url || '/placeholder-bike.jpg'}
-                                  alt={intent.bike_name}
-                                  className="w-12 h-12 object-cover rounded"
-                                />
-                                <div>
-                                  <div className="font-medium">{intent.bike_name}</div>
-                                  <div className="text-sm text-muted-foreground">
-                                    {bike?.cc} CC • {bike?.engine_type}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    Bike #: {bike?.bike_number || 'N/A'}
-                                  </div>
-                                </div>
-                              </div>
-                            </TableCell>
+                            <TableCell className="font-medium">{intent.bike_name}</TableCell>
                             <TableCell>{intent.pickup_location}</TableCell>
                             <TableCell>{intent.pickup_date}</TableCell>
                             <TableCell>{intent.drop_date}</TableCell>
@@ -1467,11 +1458,12 @@ const Admin = () => {
                             <TableCell className="font-semibold">₹{intent.total_price}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
+                                {/* Status Dropdown */}
                                 <Select
-                                  value={intent.booking_status || 'not_booked'}
-                                  onValueChange={(value) => handleBookingStatusChange(intent.id, value as 'not_booked' | 'booked')}
+                                  value={intent.booked_status || 'not_booked'}
+                                  onValueChange={(value: 'booked' | 'not_booked') => handleUpdateBookingStatus(intent.id, value)}
                                 >
-                                  <SelectTrigger className="w-32">
+                                  <SelectTrigger className={`w-32 ${intent.booked_status === 'booked' ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}>
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1491,119 +1483,7 @@ const Admin = () => {
                               </div>
                             </TableCell>
                           </TableRow>
-                            );
-                          })
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Bookings */}
-          <TabsContent value="booking" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Confirmed Bookings</CardTitle>
-                    <CardDescription>
-                      All confirmed bookings with full bike details and pricing
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {bookingIntents.filter(intent => intent.booking_status === 'booked').length} confirmed bookings
-                    </span>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date & Time</TableHead>
-                        <TableHead>Bike</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Pickup Location</TableHead>
-                        <TableHead>Pickup Date</TableHead>
-                        <TableHead>Drop Date</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Total Price</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bookingIntents.filter(intent => intent.booking_status === 'booked').length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                            No confirmed bookings yet. Mark booking intents as "Booked" in the Live Tracker to see them here.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        bookingIntents
-                          .filter(intent => intent.booking_status === 'booked')
-                          .map((intent) => {
-                            const bike = bikes.find(b => b.id === intent.bike_id);
-                            return (
-                              <TableRow key={intent.id}>
-                                <TableCell>
-                                  {new Date(intent.created_at).toLocaleString()}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <img
-                                      src={bike?.image_url || '/placeholder-bike.jpg'}
-                                      alt={intent.bike_name}
-                                      className="w-16 h-16 object-cover rounded flex-shrink-0"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-medium">{intent.bike_name}</div>
-                                      <div className="text-sm text-muted-foreground">
-                                        {bike?.cc} CC • {bike?.engine_type}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        Bike #: {bike?.bike_number || 'N/A'}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="space-y-2">
-                                    <div className="font-medium">
-                                      {intent.customer_phone || 'Phone not provided'}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground">
-                                      WhatsApp booking
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {intent.pickup_location}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>{intent.pickup_date}</TableCell>
-                                <TableCell>{intent.drop_date}</TableCell>
-                                <TableCell>{intent.total_hours} hours</TableCell>
-                                <TableCell className="font-semibold">₹{intent.total_price}</TableCell>
-                                <TableCell>
-                                  <Select
-                                    value={intent.booking_status || 'booked'}
-                                    onValueChange={(value) => handleBookingStatusChange(intent.id, value as 'not_booked' | 'booked')}
-                                  >
-                                    <SelectTrigger className="w-32">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="not_booked">Not Booked</SelectItem>
-                                      <SelectItem value="booked">Booked</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })
+                        ))
                       )}
                     </TableBody>
                   </Table>
